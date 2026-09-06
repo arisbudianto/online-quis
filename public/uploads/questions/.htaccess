@@ -1,0 +1,16 @@
+# Lapisan pertahanan tambahan: folder ini HANYA untuk gambar soal.
+# Walau kode aplikasi sudah memastikan cuma ekstensi gambar yang bisa
+# tersimpan di sini, baris ini mencegah SEGALA file (apapun ekstensinya,
+# termasuk kalau suatu saat ada bug lain) dieksekusi sebagai PHP oleh
+# server -- cuma bisa diakses sebagai file statis biasa.
+
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+<FilesMatch "\.(php|php3|php4|php5|php7|phtml|pht)$">
+    Require all denied
+</FilesMatch>

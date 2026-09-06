@@ -1,0 +1,64 @@
+@extends('layouts.app')
+@section('title', 'Daftar Kuis')
+
+@section('content')
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Kuis Saya</h3>
+    <div class="d-flex gap-2">
+        <a href="{{ route('dosen.courses.index') }}" class="btn btn-outline-secondary">📚 Mata Kuliah</a>
+        <a href="{{ route('dosen.students.index') }}" class="btn btn-outline-secondary">🎓 Mahasiswa</a>
+        <a href="{{ route('dosen.quizzes.create') }}" class="btn btn-primary">+ Buat Kuis</a>
+    </div>
+</div>
+
+<table class="table table-bordered bg-white align-middle">
+    <thead>
+        <tr>
+            <th>Judul</th>
+            <th>Mata Kuliah</th>
+            <th>Kode</th>
+            <th>Jumlah Soal</th>
+            <th>Status Aktif</th>
+            <th>Sudah Mengerjakan</th>
+            <th>Aksi</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse ($quizzes as $quiz)
+            <tr>
+                <td>{{ $quiz->title }}</td>
+                <td>{{ $quiz->course->name ?? '—' }}</td>
+                <td><code>{{ $quiz->code ?? '-' }}</code></td>
+                <td>{{ $quiz->questions_count }}</td>
+                <td>
+                    @if (!$quiz->is_published)
+                        <span class="badge bg-secondary">Draft</span>
+                    @elseif ($quiz->isOpenNow())
+                        <span class="badge bg-success">🟢 Aktif Sekarang</span>
+                    @elseif ($quiz->start_time && now()->lt($quiz->start_time))
+                        <span class="badge bg-warning text-dark">⏳ Belum Dibuka</span>
+                    @else
+                        <span class="badge bg-danger">🔴 Sudah Tutup</span>
+                    @endif
+                </td>
+                <td>
+                    <strong>{{ $quiz->submitted_count }}</strong> mahasiswa
+                </td>
+                <td class="d-flex gap-2">
+                    <a href="{{ route('dosen.quizzes.edit', $quiz) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
+                    <a href="{{ route('dosen.quizzes.scores', $quiz) }}" class="btn btn-sm btn-outline-success">Nilai</a>
+                    <a href="{{ route('dosen.quizzes.analytics', $quiz) }}" class="btn btn-sm btn-outline-info">📊 Analitik</a>
+                    <form method="POST" action="{{ route('dosen.quizzes.destroy', $quiz) }}" onsubmit="return confirm('Hapus kuis ini?')">
+                        @csrf @method('DELETE')
+                        <button class="btn btn-sm btn-outline-danger">Hapus</button>
+                    </form>
+                </td>
+            </tr>
+        @empty
+            <tr><td colspan="7" class="text-center text-muted">Belum ada kuis.</td></tr>
+        @endforelse
+    </tbody>
+</table>
+
+{{ $quizzes->links() }}
+@endsection

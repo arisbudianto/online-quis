@@ -1,0 +1,92 @@
+PANDUAN PASANG PERBAIKAN TEST (ROUND 2)
+=========================================
+
+TIDAK ADA PERUBAHAN ROUTE. Tapi urutan langkah di bawah ini PENTING untuk
+diikuti PERSIS -- terutama untuk fix verifikasi email, supaya tidak ada
+mahasiswa yang mendadak terkunci dari aplikasi.
+
+
+1) BACKUP DULU (WAJIB kali ini, bukan cuma kebiasaan baku -- ini menyentuh
+   status akun semua user)
+
+    cd /home/speakver/quis.speakverse.id
+    mysqldump -u NAMA_USER -p NAMA_DATABASE > ~/backups/quisdb_$(date +%Y%m%d_%H%M).sql
+
+
+2) AKTIFKAN MODE MAINTENANCE (supaya tidak ada mahasiswa yang request di
+   tengah-tengah proses ini)
+
+    php artisan down
+
+Selama mode ini aktif, semua orang yang buka situs Anda akan lihat halaman
+"Segera kembali" -- ini normal, cuma sementara beberapa menit.
+
+
+3) EXTRACT PAKET
+
+    unzip -o test-fixes-v2.zip
+
+
+4) TANDAI SEMUA AKUN YANG SUDAH ADA SEBAGAI "SUDAH TERVERIFIKASI"
+
+Ini LANGKAH PALING PENTING -- jalankan SEBELUM ada mahasiswa manapun yang
+akses aplikasi lagi setelah User.php yang baru aktif:
+
+    php artisan tinker --execute="
+    \$count = App\Models\User::whereNull('email_verified_at')->update(['email_verified_at' => now()]);
+    echo \$count . ' akun ditandai sudah terverifikasi.';
+    "
+
+Ini akan menandai SEMUA akun (dosen, mahasiswa, admin) yang belum pernah
+verifikasi (kemungkinan hampir semua akun Anda sekarang, karena memang
+belum pernah diminta verifikasi sejak awal) jadi otomatis dianggap sudah
+verified. TIDAK ADA yang akan terkunci akibat perubahan ini.
+
+Mulai SEKARANG (setelah command ini), akun yang BARU daftar lewat /register
+akan benar-benar diminta verifikasi email (menerima email berisi link
+verifikasi, harus diklik sebelum bisa masuk ke aplikasi).
+
+
+5) BERSIHKAN CACHE (PENTING -- class User yang lama bisa saja masih
+   ke-cache oleh OPcache/config cache)
+
+    php artisan config:clear
+    php artisan view:clear
+    php artisan route:clear
+    php artisan cache:clear
+
+
+6) MATIKAN MODE MAINTENANCE
+
+    php artisan up
+
+
+7) CEK EKSTENSI SQLITE (kalau belum pernah dicek)
+
+    php -m | grep sqlite
+
+
+8) JALANKAN TEST
+
+    php artisan test
+
+Yang diharapkan SEKARANG:
+- ScoringTest, DeviceBindingTest, RoleMiddlewareTest, ShortAnswerGradingTest,
+  RegistrationTest -> SEMUA HARUS HIJAU (PASS)
+- ProfileTest -> harus PASS sekarang juga (baris "email verification status
+  is unchanged" dan "profile information can be updated" sudah harus benar)
+- Test Auth bawaan Breeze lain (AuthenticationTest, EmailVerificationTest,
+  dst.) -> tetap PASS seperti sebelumnya
+
+Kalau SEMUA hijau, berarti perbaikan verifikasi email dan semua fix test
+sebelumnya sudah benar dan aman dipasang.
+
+
+9) UJI COBA MANUAL DI BROWSER (opsional tapi disarankan)
+
+- Daftar 1 akun mahasiswa BARU lewat /register dengan email asli Anda
+  sendiri (bukan yang sudah ada) -> cek email verifikasi BENAR-BENAR masuk
+  ke inbox kali ini (sebelumnya tidak pernah terkirim sama sekali).
+- Login pakai akun mahasiswa/dosen yang SUDAH ADA dari sebelumnya -> harus
+  tetap bisa akses semua fitur seperti biasa TANPA diminta verifikasi
+  (karena sudah ditandai verified di langkah 4).
