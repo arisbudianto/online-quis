@@ -1,0 +1,69 @@
+/*
+ * Brand theme override untuk halaman dashboard (Bootstrap 5).
+ * Tujuan: menyamakan nuansa warna dengan halaman login/landing (merah-hitam)
+ * TANPA mengubah struktur HTML/komponen apapun -- murni override variabel
+ * warna Bootstrap + beberapa class yang paling sering dipakai di seluruh
+ * dashboard. Kalau ada bagian yang di-skip/tetap biru bawaan, aman -- cuma
+ * berarti belum ke-cover, bukan rusak.
+ */
+
+:root {
+    --bs-primary: #DC3B1C;
+    --bs-primary-rgb: 220, 59, 28;
+    --bs-link-color: #DC3B1C;
+    --bs-link-color-rgb: 220, 59, 28;
+    --bs-link-hover-color: #b52f16;
+}
+
+.btn-primary {
+    background-color: #DC3B1C;
+    border-color: #DC3B1C;
+}
+.btn-primary:hover,
+.btn-primary:focus,
+.btn-primary:active {
+    background-color: #b52f16 !important;
+    border-color: #b52f16 !important;
+}
+
+.btn-outline-primary {
+    color: #DC3B1C;
+    border-color: #DC3B1C;
+}
+.btn-outline-primary:hover {
+    background-color: #DC3B1C;
+    border-color: #DC3B1C;
+}
+
+.text-primary {
+    color: #DC3B1C !important;
+}
+
+.badge.bg-primary {
+    background-color: #DC3B1C !important;
+}
+
+.border-primary {
+    border-color: #DC3B1C !important;
+}
+
+/* Navbar hitam solid (bukan biru gelap default Bootstrap) -- kalau navbar
+   sudah pakai bg-dark, ini otomatis menghitamkan sesuai brand. */
+.navbar.bg-dark {
+    background-color: #111111 !important;
+}
+
+a {
+    color: #DC3B1C;
+}
+a:hover {
+    color: #b52f16;
+}
+
+/* Progress bar & spinner, kalau dipakai di halaman analitik/loading */
+.progress-bar {
+    background-color: #DC3B1C;
+}
+.spinner-border.text-primary {
+    color: #DC3B1C !important;
+}
