@@ -56,6 +56,8 @@ class ScoringTest extends TestCase
         $this->actingAs($mahasiswa);
 
         // Mulai attempt
+        // Browser nyata mengirim cookie perangkat yang sama di setiap request.
+        $this->withCookie('qz_device_id', 'perangkat-test-1');
         $this->post(route('mahasiswa.quizzes.start', $quiz));
         $this->continueSession();
         $attempt = Attempt::where('quiz_id', $quiz->id)->where('user_id', $mahasiswa->id)->firstOrFail();
@@ -138,6 +140,8 @@ class ScoringTest extends TestCase
         $correct = Option::create(['question_id' => $q1->id, 'option_text' => 'Benar', 'is_correct' => true, 'order' => 1]);
 
         $this->actingAs($mahasiswa);
+        // Browser nyata mengirim cookie perangkat yang sama di setiap request.
+        $this->withCookie('qz_device_id', 'perangkat-test-1');
         $this->post(route('mahasiswa.quizzes.start', $quiz));
         $this->continueSession();
 

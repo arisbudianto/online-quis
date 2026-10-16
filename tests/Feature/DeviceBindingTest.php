@@ -56,7 +56,7 @@ class DeviceBindingTest extends TestCase
             'started_at' => now(),
             'deadline_at' => now()->addHour(),
             'status' => 'in_progress',
-            'browser_session_id' => 'sesi-device-lain-yang-berbeda',
+            'device_token' => 'perangkat-lain-yang-berbeda',
         ]);
 
         $this->actingAs($mahasiswa)
@@ -76,6 +76,8 @@ class DeviceBindingTest extends TestCase
         $quiz = $this->makeSimpleQuiz($dosen);
 
         $this->actingAs($mahasiswa);
+        // Browser nyata mengirim cookie perangkat yang sama di setiap request.
+        $this->withCookie('qz_device_id', 'perangkat-test-1');
         $this->post(route('mahasiswa.quizzes.start', $quiz));
         $this->continueSession();
 
