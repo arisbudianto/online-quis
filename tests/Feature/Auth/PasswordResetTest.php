@@ -70,4 +70,17 @@ class PasswordResetTest extends TestCase
             return true;
         });
     }
+
+    public function test_rejected_recipient_shows_error_instead_of_500(): void
+    {
+        $user = User::factory()->create(['email' => 'admin@contoh.test']);
+
+        \Illuminate\Support\Facades\Notification::shouldReceive('send')->andThrow(
+            new \Symfony\Component\Mailer\Exception\UnexpectedResponseException('550 No Such User Here', 550)
+        );
+
+        $this->post('/forgot-password', ['email' => $user->email])
+            ->assertRedirect()
+            ->assertSessionHasErrors('email');
+    }
 }
