@@ -63,6 +63,9 @@
                 <td><code>{{ $quiz->code ?? '-' }}</code></td>
                 <td>{{ $quiz->questions_count }}</td>
                 <td>
+                    @if ($quiz->is_published && $quiz->questions_count === 0)
+                        <span class="badge bg-danger" title="Mahasiswa tidak bisa memulai kuis ini">⚠ Terbit tanpa soal</span>
+                    @endif
                     @if (!$quiz->is_published)
                         <span class="badge bg-secondary">Draft</span>
                     @elseif ($quiz->isOpenNow())

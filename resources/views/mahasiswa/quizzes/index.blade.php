@@ -26,6 +26,8 @@
                             @csrf
                             <button class="btn btn-warning btn-sm">Lanjutkan Kuis</button>
                         </form>
+                    @elseif ($quiz->questions_count === 0)
+                        <span class="badge bg-secondary">Belum berisi soal</span>
                     @elseif (!$quiz->isOpenNow())
                         <span class="badge bg-secondary">Belum/Tidak dibuka</span>
                     @elseif ($used >= \App\Models\Quiz::MAX_ATTEMPTS)

@@ -20,6 +20,10 @@
                         <input type="hidden" name="code" value="{{ $quiz->code }}">
                         <button class="btn btn-warning">Lanjutkan Kuis</button>
                     </form>
+                @elseif ($quiz->questions_count === 0)
+                    <div class="alert alert-warning mt-3 mb-0">
+                        Kuis ini belum berisi soal. Hubungi dosen pengampu.
+                    </div>
                 @elseif (!$quiz->isOpenNow())
                     <div class="alert alert-warning mt-3 mb-0">
                         Kuis ini belum dibuka, sudah ditutup, atau belum diterbitkan oleh dosen.

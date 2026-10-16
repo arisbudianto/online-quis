@@ -117,6 +117,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('hasil/{attempt}', [MahasiswaQuizController::class, 'result'])->name('quizzes.result');
         Route::get('gabung', [QuizJoinController::class, 'showForm'])->name('quizzes.join');
         Route::post('gabung', [QuizJoinController::class, 'submit'])->name('quizzes.join.submit');
+        Route::get('gabung/{code}', [QuizJoinController::class, 'show'])->name('quizzes.found');
         Route::get('riwayat', [HistoryController::class, 'index'])->name('quizzes.history');
         Route::post('kerjakan/{attempt}/tab-switch', [MahasiswaQuizController::class, 'reportTabSwitch'])->name('quizzes.tabSwitch');
         Route::get('kerjakan/{attempt}/device-mismatch', [MahasiswaQuizController::class, 'deviceMismatch'])->name('quizzes.deviceMismatch');

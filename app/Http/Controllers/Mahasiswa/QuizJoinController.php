@@ -32,14 +32,29 @@ class QuizJoinController extends Controller
                 ->withInput();
         }
 
+        // POST lalu redirect ke halaman GET, supaya tombol Back mahasiswa
+        // kembali ke halaman yang bisa dimuat ulang (token baru), bukan ke
+        // hasil POST lama yang memicu "Page Expired".
+        return redirect()->route('mahasiswa.quizzes.found', $quiz->code);
+    }
+
+    public function show(Request $request, string $code)
+    {
+        $quiz = Quiz::where('code', strtoupper(trim($code)))->withCount('questions')->first();
+
+        if (!$quiz) {
+            return redirect()->route('mahasiswa.quizzes.join')
+                ->withErrors(['code' => 'Kode kuis tidak ditemukan. Periksa kembali kode yang diberikan dosen Anda.']);
+        }
+
         $attempts = Attempt::where('quiz_id', $quiz->id)
             ->where('user_id', $request->user()->id)
             ->get(['id', 'status']);
 
-        return view('mahasiswa.quizzes.found', [
+        return response()->view('mahasiswa.quizzes.found', [
             'quiz' => $quiz,
             'used' => $attempts->count(),
             'ongoing' => $attempts->contains('status', 'in_progress'),
-        ]);
+        ])->header('Cache-Control', 'no-store, must-revalidate');
     }
 }

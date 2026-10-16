@@ -140,6 +140,14 @@ class QuizController extends Controller
         $data['is_public'] = $request->boolean('is_public', false);
         $data['target_kelas'] = !empty($data['target_kelas']) ? $data['target_kelas'] : null;
 
+        // Kuis tanpa soal tidak boleh terbit: mahasiswa akan menemukan kuis
+        // lewat kode tetapi tidak bisa memulainya (kejadian kuis 10, Okt 2026).
+        if ($data['is_published'] && !$quiz->questions()->exists()) {
+            return back()->withInput()->withErrors([
+                'is_published' => 'Kuis belum punya soal. Tambahkan soal dulu sebelum menerbitkan.',
+            ]);
+        }
+
         $notifyStudents = $request->boolean('notify_students', false);
         $notifyEmail = $request->boolean('notify_email', false);
 

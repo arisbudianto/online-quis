@@ -17,6 +17,7 @@ class QuizController extends Controller
     public function index(Request $request)
     {
         $quizzes = Quiz::where('is_published', true)
+            ->withCount('questions')
             // Kuis privat (is_public = false) sengaja TIDAK ikut di sini --
             // hanya bisa diakses lewat "Masukkan Kode Kuis" / scan QR.
             ->where('is_public', true)
@@ -68,7 +69,9 @@ class QuizController extends Controller
             $questionIds = array_slice($questionIds, 0, $quiz->questions_to_show);
         }
 
-        abort_if(empty($questionIds), 422, 'Kuis ini belum memiliki soal.');
+        if (empty($questionIds)) {
+            return $this->backWithError($request, $quiz, 'Kuis ini belum berisi soal. Hubungi dosen pengampu.');
+        }
 
         // Token perangkat yang stabil -- dipakai ulang kalau browser ini
         // sudah pernah punya (misal sedang/baru selesai kuis lain), atau
@@ -158,8 +161,12 @@ class QuizController extends Controller
             return ['created', $attempt];
         });
 
-        abort_if($outcome === 'limit', 403, 'Kuis ini hanya boleh dikerjakan satu kali.');
-        abort_if($outcome === 'closed', 403, 'Kuis belum dibuka atau sudah ditutup.');
+        if ($outcome === 'limit') {
+            return $this->backWithError($request, $quiz, 'Anda sudah mengerjakan kuis ini. Setiap kuis hanya bisa dikerjakan satu kali.');
+        }
+        if ($outcome === 'closed') {
+            return $this->backWithError($request, $quiz, 'Kuis belum dibuka atau sudah ditutup.');
+        }
 
         return redirect()->route('mahasiswa.quizzes.take', $attempt);
     }
@@ -311,6 +318,19 @@ class QuizController extends Controller
     private function finalizeAttempt(Attempt $attempt): void
     {
         app(AttemptFinalizer::class)->finalize($attempt);
+    }
+
+    /**
+     * Penolakan saat mulai kuis ditampilkan sebagai pesan di halaman asal,
+     * bukan halaman error, supaya mahasiswa tahu harus berbuat apa.
+     */
+    private function backWithError(Request $request, Quiz $quiz, string $message)
+    {
+        $target = $request->filled('code') && $quiz->code
+            ? route('mahasiswa.quizzes.found', $quiz->code)
+            : route('mahasiswa.quizzes.index');
+
+        return redirect($target)->withErrors(['quiz' => $message]);
     }
 
     private function authorizeOwner(Request $request, Attempt $attempt): void

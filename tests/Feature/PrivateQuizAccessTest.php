@@ -90,6 +90,7 @@ class PrivateQuizAccessTest extends TestCase
         $quiz = $this->makeQuiz(false);
 
         $this->actingAs($this->mahasiswa())
+            ->followingRedirects()
             ->post(route('mahasiswa.quizzes.join.submit'), ['code' => $quiz->code])
             ->assertOk()
             ->assertSee('name="code" value="' . $quiz->code . '"', false);

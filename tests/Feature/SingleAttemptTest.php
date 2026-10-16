@@ -62,7 +62,8 @@ class SingleAttemptTest extends TestCase
 
         $this->actingAs($mhs)
             ->post(route('mahasiswa.quizzes.start', $quiz))
-            ->assertForbidden();
+            ->assertRedirect(route('mahasiswa.quizzes.index'))
+            ->assertSessionHasErrors('quiz');
 
         $this->assertSame(1, Attempt::where('quiz_id', $quiz->id)->count());
     }
@@ -78,7 +79,7 @@ class SingleAttemptTest extends TestCase
         $attempt = Attempt::where('quiz_id', $quiz->id)->firstOrFail();
         $this->actingAs($mhs)->post(route('mahasiswa.quizzes.submit', $attempt));
 
-        $this->actingAs($mhs)->post(route('mahasiswa.quizzes.start', $quiz))->assertForbidden();
+        $this->actingAs($mhs)->post(route('mahasiswa.quizzes.start', $quiz))->assertSessionHasErrors('quiz');
         $this->assertSame(1, Attempt::where('quiz_id', $quiz->id)->count());
     }
 
