@@ -56,6 +56,9 @@ return [
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
             'prefix_indexes' => true,
+            // Kunci sesi MySQL ke WIB supaya kolom TIMESTAMP konsisten dengan
+            // zona waktu aplikasi, tidak bergantung pada setelan server.
+            'timezone' => env('DB_TIMEZONE', '+07:00'),
             'strict' => true,
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([

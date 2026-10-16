@@ -36,7 +36,7 @@
            class="btn btn-sm {{ !$kelas ? 'btn-primary' : 'btn-outline-primary' }}">
             Semua Kelas
         </a>
-        @foreach (['A', 'B', 'C', 'D'] as $k)
+        @foreach (\App\Models\User::KELAS as $k)
             <a href="{{ route('admin.students.index', array_filter(['angkatan' => $angkatan, 'kelas' => $k])) }}"
                class="btn btn-sm {{ $kelas === $k ? 'btn-primary' : 'btn-outline-primary' }}">
                 Kelas {{ $k }}

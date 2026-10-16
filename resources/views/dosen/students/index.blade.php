@@ -38,7 +38,7 @@
            class="btn btn-sm {{ empty($kelas) ? 'btn-success' : 'btn-outline-success' }}">
             Semua Kelas
         </a>
-        @foreach (['A', 'B', 'C', 'D'] as $k)
+        @foreach (\App\Models\User::KELAS as $k)
             <a href="{{ route('dosen.students.index', array_filter(['angkatan' => $angkatan ?? null, 'kelas' => $k])) }}"
                class="btn btn-sm {{ ($kelas ?? null) === $k ? 'btn-success' : 'btn-outline-success' }}">
                 Kelas {{ $k }}
@@ -147,7 +147,7 @@
                     <label class="form-label">Kelas</label>
                     <select name="kelas" id="edit_kelas" class="form-select">
                         <option value="">— Tidak ada —</option>
-                        @foreach (['A','B','C','D'] as $k)
+                        @foreach (\App\Models\User::KELAS as $k)
                             <option value="{{ $k }}">{{ $k }}</option>
                         @endforeach
                     </select>

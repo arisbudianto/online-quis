@@ -25,7 +25,7 @@
                 <label class="form-label">Kelas</label>
                 <select name="kelas" class="form-control" required>
                     <option value="" disabled>Pilih kelas</option>
-                    @foreach (['A', 'B', 'C'] as $opt)
+                    @foreach (\App\Models\User::KELAS as $opt)
                         <option value="{{ $opt }}" {{ old('kelas', $user->kelas) === $opt ? 'selected' : '' }}>{{ $opt }}</option>
                     @endforeach
                 </select>
