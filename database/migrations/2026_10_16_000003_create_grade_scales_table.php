@@ -19,17 +19,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        // Nilai awal dari tabel konversi yang diberikan pemilik aplikasi
-        // (16-10-2026). Rentang ditafsirkan sebagai batas bawah, sehingga
-        // 65-66 masuk C dan 50-54 masuk E. Untuk C dan D dipakai bobot
-        // versi pertama (2,3 dan 2,0). Admin bisa mengubah dari aplikasi.
+        // Nilai awal dari tabel konversi pemilik aplikasi (16-10-2026,
+        // dikoreksi 19:23): C 60-64, C+ 65-69, D 55-59, E di bawah 55.
+        // Angka = batas bawah. Untuk C dan D dipakai bobot versi pertama
+        // (2,3 dan 2,0). Admin bisa mengubah dari aplikasi.
         $now = now();
         DB::table('grade_scales')->insert([
             ['letter' => 'A',  'min_score' => 85, 'weight' => 4.0, 'created_at' => $now, 'updated_at' => $now],
             ['letter' => 'A-', 'min_score' => 80, 'weight' => 3.7, 'created_at' => $now, 'updated_at' => $now],
             ['letter' => 'B+', 'min_score' => 75, 'weight' => 3.3, 'created_at' => $now, 'updated_at' => $now],
             ['letter' => 'B',  'min_score' => 70, 'weight' => 3.0, 'created_at' => $now, 'updated_at' => $now],
-            ['letter' => 'C+', 'min_score' => 67, 'weight' => 2.7, 'created_at' => $now, 'updated_at' => $now],
+            ['letter' => 'C+', 'min_score' => 65, 'weight' => 2.7, 'created_at' => $now, 'updated_at' => $now],
             ['letter' => 'C',  'min_score' => 60, 'weight' => 2.3, 'created_at' => $now, 'updated_at' => $now],
             ['letter' => 'D',  'min_score' => 55, 'weight' => 2.0, 'created_at' => $now, 'updated_at' => $now],
             ['letter' => 'E',  'min_score' => 0,  'weight' => 0.0, 'created_at' => $now, 'updated_at' => $now],
