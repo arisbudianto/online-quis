@@ -21,6 +21,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('queue:work --stop-when-empty --max-time=50')
             ->everyMinute()
             ->withoutOverlapping();
+
+        // Tutup attempt yang lewat deadline tapi masih in_progress (mahasiswa
+        // menutup browser sebelum waktu habis), supaya nilainya masuk rekap.
+        $schedule->command('attempts:finalize-expired')
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
     }
 
     protected function commands(): void

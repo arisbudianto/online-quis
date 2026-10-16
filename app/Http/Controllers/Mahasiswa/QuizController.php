@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mahasiswa;
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Quiz;
+use App\Services\AttemptFinalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
@@ -287,54 +288,12 @@ class QuizController extends Controller
     }
 
     /**
-     * Menilai otomatis soal pilihan_ganda & isian_singkat (isi `points` 100/0),
-     * mengosongkan `points` soal esai (menunggu dosen), lalu hitung skor akhir
-     * lewat Attempt::recalculateScoreIfReady() -- yang otomatis langsung final
-     * kalau tidak ada esai sama sekali (perilaku SEKARANG dipertahankan persis).
+     * Penilaian dipindah ke App\Services\AttemptFinalizer supaya dipakai
+     * bersama oleh command attempts:finalize-expired. Rumus tidak berubah.
      */
     private function finalizeAttempt(Attempt $attempt): void
     {
-        DB::transaction(function () use ($attempt) {
-            $answers = $attempt->answers()->with('question.options')->get();
-
-            foreach ($answers as $answer) {
-                $question = $answer->question;
-
-                if ($question->type === 'pilihan_ganda') {
-                    $selectedIsCorrect = false;
-                    if ($answer->selected_option_id) {
-                        $selectedOption = $question->options->firstWhere('id', $answer->selected_option_id);
-                        $selectedIsCorrect = (bool) ($selectedOption?->is_correct);
-                    }
-                    $answer->update([
-                        'is_correct' => $selectedIsCorrect,
-                        'points' => $selectedIsCorrect ? 100 : 0,
-                    ]);
-                } elseif ($question->type === 'isian_singkat') {
-                    $isCorrect = $this->matchesShortAnswer($answer->answer_text, $question->correct_text_answer);
-                    $answer->update([
-                        'is_correct' => $isCorrect,
-                        'points' => $isCorrect ? 100 : 0,
-                    ]);
-                } else {
-                    // esai: belum bisa dinilai otomatis, points tetap null (menunggu dosen)
-                    $answer->update(['is_correct' => null, 'points' => null]);
-                }
-            }
-
-            $attempt->update(['status' => 'submitted', 'submitted_at' => now()]);
-            $attempt->recalculateScoreIfReady();
-        });
-    }
-
-    /**
-     * Cocokkan jawaban isian singkat: case-insensitive + toleransi spasi
-     * berlebih di awal/akhir/tengah.
-     */
-    private function matchesShortAnswer(?string $given, ?string $correct): bool
-    {
-        $normalize = fn ($v) => trim(preg_replace('/\s+/', ' ', mb_strtolower((string) $v)));
-        return $normalize($given) !== '' && $normalize($given) === $normalize($correct);
+        app(AttemptFinalizer::class)->finalize($attempt);
     }
 
     private function authorizeOwner(Request $request, Attempt $attempt): void
