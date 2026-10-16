@@ -132,15 +132,15 @@ class SemesterRecapTest extends TestCase
         return app(SemesterGradeService::class)->build($this->dosen, $this->course, $this->period, $kelas);
     }
 
-    public function test_final_is_average_with_best_attempt_and_missing_as_zero(): void
+    public function test_final_is_average_with_first_attempt_and_missing_as_zero(): void
     {
         $q1 = $this->quiz(['title' => 'Q1']);
         $q2 = $this->quiz(['title' => 'Q2']);
         $q3 = $this->quiz(['title' => 'Q3']);
         $s = $this->student('K3526001');
 
-        $this->attempt($q1, $s, 60);
-        $this->attempt($q1, $s, 90);   // tertinggi dipakai
+        $this->attempt($q1, $s, 90);
+        $this->attempt($q1, $s, 30);   // data lama: pengerjaan kedua diabaikan
         $this->attempt($q2, $s, 75);
         // Q3 tidak dikerjakan => 0
 
@@ -172,12 +172,13 @@ class SemesterRecapTest extends TestCase
         $this->assertNull($row['letter'], 'Belum final tidak boleh diberi huruf.');
     }
 
-    public function test_graded_attempt_wins_over_pending_retry(): void
+    public function test_only_first_attempt_counts_for_legacy_duplicates(): void
     {
         $q = $this->quiz();
         $s = $this->student('K3526003');
 
         $this->attempt($q, $s, 70);
+        $this->attempt($q, $s, 100);
         $this->attempt($q, $s, null, 'submitted', true);
 
         $row = $this->build()['rows']->first();

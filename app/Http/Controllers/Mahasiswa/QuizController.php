@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Mahasiswa;
 use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Quiz;
+use App\Models\User;
 use App\Services\AttemptFinalizer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
@@ -32,7 +33,14 @@ class QuizController extends Controller
             ->groupBy('quiz_id')
             ->pluck('total', 'quiz_id');
 
-        return view('mahasiswa.quizzes.index', compact('quizzes', 'attemptCounts'));
+        // Kuis yang attempt-nya masih berjalan: tampilkan tombol lanjutkan.
+        $ongoingQuizIds = Attempt::where('user_id', $request->user()->id)
+            ->whereIn('quiz_id', $quizzes->pluck('id'))
+            ->where('status', 'in_progress')
+            ->pluck('quiz_id')
+            ->flip();
+
+        return view('mahasiswa.quizzes.index', compact('quizzes', 'attemptCounts', 'ongoingQuizIds'));
     }
 
     public function start(Request $request, Quiz $quiz)
@@ -48,20 +56,6 @@ class QuizController extends Controller
                 403,
                 'Kuis privat hanya bisa dimulai lewat kode kuis.'
             );
-        }
-
-        abort_unless($quiz->isOpenNow(), 403, 'Kuis belum dibuka atau sudah ditutup.');
-
-        $attemptCount = Attempt::where('quiz_id', $quiz->id)->where('user_id', $user->id)->count();
-        abort_if($attemptCount >= $quiz->max_attempts, 403, 'Anda sudah mencapai batas maksimal percobaan.');
-
-        $ongoing = Attempt::where('quiz_id', $quiz->id)
-            ->where('user_id', $user->id)
-            ->where('status', 'in_progress')
-            ->first();
-
-        if ($ongoing && !$ongoing->isExpired()) {
-            return redirect()->route('mahasiswa.quizzes.take', $ongoing);
         }
 
         $questionIds = $quiz->questions()->pluck('id')->all();
@@ -88,7 +82,27 @@ class QuizController extends Controller
             60 * 24 * 30 // 30 hari, jauh melebihi durasi kuis manapun
         ));
 
-        $attempt = DB::transaction(function () use ($quiz, $user, $questionIds, $request, $deviceToken) {
+        // Pemeriksaan dan pembuatan attempt dalam satu transaksi dengan baris
+        // mahasiswa dikunci, supaya klik ganda tidak menghasilkan 2 attempt.
+        [$outcome, $attempt] = DB::transaction(function () use ($quiz, $user, $questionIds, $request, $deviceToken) {
+            User::whereKey($user->id)->lockForUpdate()->first();
+
+            $existing = Attempt::where('quiz_id', $quiz->id)->where('user_id', $user->id)->orderBy('id')->get();
+
+            // Attempt yang masih berjalan selalu dilanjutkan. Kalau waktunya
+            // sudah habis, halaman kerjakan yang akan menutup dan menilainya.
+            if ($ongoing = $existing->firstWhere('status', 'in_progress')) {
+                return ['resume', $ongoing];
+            }
+
+            if ($existing->count() >= Quiz::MAX_ATTEMPTS) {
+                return ['limit', null];
+            }
+
+            if (!$quiz->isOpenNow()) {
+                return ['closed', null];
+            }
+
             $attempt = Attempt::create([
                 'quiz_id' => $quiz->id,
                 'user_id' => $user->id,
@@ -141,8 +155,11 @@ class QuizController extends Controller
             // per satu lewat ->create() di dalam loop.
             DB::table('attempt_answers')->insert($rows);
 
-            return $attempt;
+            return ['created', $attempt];
         });
+
+        abort_if($outcome === 'limit', 403, 'Kuis ini hanya boleh dikerjakan satu kali.');
+        abort_if($outcome === 'closed', 403, 'Kuis belum dibuka atau sudah ditutup.');
 
         return redirect()->route('mahasiswa.quizzes.take', $attempt);
     }

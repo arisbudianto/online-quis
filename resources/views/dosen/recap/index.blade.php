@@ -127,7 +127,7 @@
     </div>
 
     <p class="small text-muted">
-        Nilai per kuis memakai skor tertinggi bila mengerjakan lebih dari sekali.
+        Setiap kuis dikerjakan satu kali; untuk data lama yang terlanjur lebih dari sekali, dipakai pengerjaan pertama.
         "–" berarti tidak mengerjakan dan dihitung 0. Nilai akhir adalah rata-rata semua kuis,
         dikonversi ke huruf sesuai tabel konversi yang diatur admin.
     </p>

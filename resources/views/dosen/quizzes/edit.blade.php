@@ -103,8 +103,8 @@
                         <input type="datetime-local" name="end_time" class="form-control" value="{{ optional($quiz->end_time)->format('Y-m-d\TH:i') }}">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Maks. Percobaan</label>
-                        <input type="number" name="max_attempts" class="form-control" value="{{ $quiz->max_attempts }}" required>
+                        <label class="form-label">Percobaan</label>
+                        <div class="form-control-plaintext py-0">1 kali per mahasiswa</div>
                     </div>
                     <div class="form-check mb-2">
                         <input type="checkbox" name="shuffle_questions" value="1" class="form-check-input" {{ $quiz->shuffle_questions ? 'checked' : '' }}>

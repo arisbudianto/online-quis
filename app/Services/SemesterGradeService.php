@@ -19,12 +19,11 @@ use Illuminate\Support\Collection;
  * - Peserta: daftar peserta resmi (course_enrollments) untuk course+periode.
  *   Mahasiswa yang mengerjakan tapi tidak terdaftar dilaporkan terpisah
  *   di 'unenrolled', tidak masuk rekap.
- * - Nilai per kuis: skor tertinggi dari attempt submitted yang sudah final
- *   (default sementara, belum dikonfirmasi).
- * - Ada attempt submitted yang masih menunggu nilai esai dan belum ada
- *   attempt final lain => sel "pending", nilai akhir belum final, tanpa huruf.
- * - Tidak mengerjakan => sel "none", dihitung MISSING_SCORE (default 0,
- *   belum dikonfirmasi).
+ * - Mahasiswa hanya boleh mengerjakan satu kali. Nilai per kuis = skor
+ *   pengerjaan pertama (data lama bisa punya lebih dari satu).
+ * - Pengerjaan pertama masih menunggu nilai esai => sel "pending",
+ *   nilai akhir belum final, tanpa huruf.
+ * - Tidak mengerjakan => sel "none", dihitung 0.
  * - Nilai akhir = rata-rata sama rata semua kuis, 2 desimal, lalu
  *   dikonversi ke huruf lewat GradeScale.
  */
@@ -127,15 +126,17 @@ class SemesterGradeService
             return ['status' => self::CELL_NONE, 'score' => null, 'attempts' => 0];
         }
 
-        $final = $attempts->where('needs_grading', false)->whereNotNull('score');
+        // Hanya satu pengerjaan yang sah. Untuk data lama yang terlanjur
+        // punya lebih dari satu, yang dihitung adalah pengerjaan pertama.
+        $first = $attempts->sortBy('id')->first();
 
-        if ($final->isEmpty()) {
+        if ($first->needs_grading || $first->score === null) {
             return ['status' => self::CELL_PENDING, 'score' => null, 'attempts' => $attempts->count()];
         }
 
         return [
             'status' => self::CELL_FINAL,
-            'score' => round((float) $final->max('score'), 2),
+            'score' => round((float) $first->score, 2),
             'attempts' => $attempts->count(),
         ];
     }

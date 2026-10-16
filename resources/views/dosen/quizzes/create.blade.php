@@ -60,8 +60,8 @@
 
     <div class="row">
         <div class="col-md-4 mb-3">
-            <label class="form-label">Maks. Percobaan</label>
-            <input type="number" name="max_attempts" class="form-control" value="{{ old('max_attempts', 1) }}" required>
+            <label class="form-label">Percobaan</label>
+            <div class="form-control-plaintext">1 kali per mahasiswa</div>
         </div>
         <div class="col-md-4 mb-3">
             <label class="form-label">Jumlah Soal Ditampilkan (kosongkan = semua)</label>

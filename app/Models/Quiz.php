@@ -9,6 +9,12 @@ class Quiz extends Model
 {
     use HasFactory;
 
+    /**
+     * Aturan pemilik aplikasi (16-10-2026): mahasiswa hanya boleh
+     * mengerjakan satu kali. Kolom max_attempts tetap ada dan selalu 1.
+     */
+    public const MAX_ATTEMPTS = 1;
+
     protected $fillable = [
         'code', 'dosen_id', 'course_id', 'academic_period_id', 'title', 'description',
         'duration_minutes', 'start_time', 'end_time', 'max_attempts',

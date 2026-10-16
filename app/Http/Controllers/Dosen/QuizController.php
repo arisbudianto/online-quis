@@ -62,7 +62,6 @@ class QuizController extends Controller
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
             'start_time' => ['nullable', 'date'],
             'end_time' => ['nullable', 'date', 'after:start_time'],
-            'max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
             'shuffle_questions' => ['nullable', 'boolean'],
             'shuffle_options' => ['nullable', 'boolean'],
             'questions_to_show' => ['nullable', 'integer', 'min:1'],
@@ -76,6 +75,7 @@ class QuizController extends Controller
         }
 
         $data['dosen_id'] = $request->user()->id;
+        $data['max_attempts'] = Quiz::MAX_ATTEMPTS;
         // Field tidak dikirim sama sekali => pakai periode aktif.
         // Dikirim kosong => dosen sengaja memilih "tanpa periode".
         if (!$request->has('academic_period_id')) {
@@ -113,7 +113,6 @@ class QuizController extends Controller
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
             'start_time' => ['nullable', 'date'],
             'end_time' => ['nullable', 'date', 'after:start_time'],
-            'max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
             'questions_to_show' => ['nullable', 'integer', 'min:1'],
             'is_published' => ['nullable', 'boolean'],
             'is_public' => ['nullable', 'boolean'],
@@ -130,6 +129,7 @@ class QuizController extends Controller
             abort_unless($ownsCourse, 403);
         }
 
+        $data['max_attempts'] = Quiz::MAX_ATTEMPTS;
         $data['shuffle_questions'] = $request->boolean('shuffle_questions', true);
         $data['shuffle_options'] = $request->boolean('shuffle_options', true);
         $data['is_published'] = $request->boolean('is_published', false);

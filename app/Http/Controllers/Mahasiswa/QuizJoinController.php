@@ -32,13 +32,14 @@ class QuizJoinController extends Controller
                 ->withInput();
         }
 
-        $attemptCount = Attempt::where('quiz_id', $quiz->id)
+        $attempts = Attempt::where('quiz_id', $quiz->id)
             ->where('user_id', $request->user()->id)
-            ->count();
+            ->get(['id', 'status']);
 
         return view('mahasiswa.quizzes.found', [
             'quiz' => $quiz,
-            'used' => $attemptCount,
+            'used' => $attempts->count(),
+            'ongoing' => $attempts->contains('status', 'in_progress'),
         ]);
     }
 }

@@ -19,12 +19,17 @@
                     <h5>{{ $quiz->title }}</h5>
                     <p class="text-muted">{{ $quiz->description }}</p>
                     <p class="mb-1">Durasi: {{ $quiz->duration_minutes }} menit</p>
-                    <p class="mb-1">Percobaan: {{ $used }} / {{ $quiz->max_attempts }}</p>
+                    <p class="mb-1">Dikerjakan satu kali</p>
 
-                    @if (!$quiz->isOpenNow())
+                    @if (isset($ongoingQuizIds[$quiz->id]))
+                        <form method="POST" action="{{ route('mahasiswa.quizzes.start', $quiz) }}">
+                            @csrf
+                            <button class="btn btn-warning btn-sm">Lanjutkan Kuis</button>
+                        </form>
+                    @elseif (!$quiz->isOpenNow())
                         <span class="badge bg-secondary">Belum/Tidak dibuka</span>
-                    @elseif ($used >= $quiz->max_attempts)
-                        <span class="badge bg-danger">Batas percobaan tercapai</span>
+                    @elseif ($used >= \App\Models\Quiz::MAX_ATTEMPTS)
+                        <span class="badge bg-success">Sudah dikerjakan</span>
                     @else
                         <form method="POST" action="{{ route('mahasiswa.quizzes.start', $quiz) }}">
                             @csrf

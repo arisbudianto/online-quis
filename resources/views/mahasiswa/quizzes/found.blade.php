@@ -12,15 +12,21 @@
                 @endunless
                 <p class="text-muted">{{ $quiz->description }}</p>
                 <p class="mb-1">Durasi: {{ $quiz->duration_minutes }} menit</p>
-                <p class="mb-1">Percobaan: {{ $used }} / {{ $quiz->max_attempts }}</p>
+                <p class="mb-1">Dikerjakan satu kali</p>
 
-                @if (!$quiz->isOpenNow())
+                @if ($ongoing)
+                    <form method="POST" action="{{ route('mahasiswa.quizzes.start', $quiz) }}" class="mt-3">
+                        @csrf
+                        <input type="hidden" name="code" value="{{ $quiz->code }}">
+                        <button class="btn btn-warning">Lanjutkan Kuis</button>
+                    </form>
+                @elseif (!$quiz->isOpenNow())
                     <div class="alert alert-warning mt-3 mb-0">
                         Kuis ini belum dibuka, sudah ditutup, atau belum diterbitkan oleh dosen.
                     </div>
-                @elseif ($used >= $quiz->max_attempts)
-                    <div class="alert alert-danger mt-3 mb-0">
-                        Anda sudah mencapai batas maksimal percobaan untuk kuis ini.
+                @elseif ($used >= \App\Models\Quiz::MAX_ATTEMPTS)
+                    <div class="alert alert-success mt-3 mb-0">
+                        Anda sudah mengerjakan kuis ini. Setiap kuis hanya bisa dikerjakan satu kali.
                     </div>
                 @else
                     <form method="POST" action="{{ route('mahasiswa.quizzes.start', $quiz) }}" class="mt-3">
