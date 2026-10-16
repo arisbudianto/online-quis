@@ -68,6 +68,7 @@
                         <th class="text-center" title="{{ $quiz->title }}">{{ \Illuminate\Support\Str::limit($quiz->title, 24) }}</th>
                     @endforeach
                     <th class="text-center">Nilai Akhir</th>
+                    <th class="text-center">Huruf</th>
                 </tr>
             </thead>
             <tbody>
@@ -95,9 +96,12 @@
                                 <span class="badge bg-secondary" title="Ada esai yang belum dinilai">belum final</span>
                             @endif
                         </td>
+                        <td class="text-center fw-bold" title="{{ $row['weight'] !== null ? 'Bobot ' . number_format($row['weight'], 1, ',', '') : '' }}">
+                            {{ $row['letter'] ?? '' }}
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ 4 + $recap['quizzes']->count() }}" class="text-center text-muted">Belum ada mahasiswa yang mengerjakan.</td></tr>
+                    <tr><td colspan="{{ 5 + $recap['quizzes']->count() }}" class="text-center text-muted">Belum ada mahasiswa yang mengerjakan.</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -105,7 +109,8 @@
 
     <p class="small text-muted">
         Nilai per kuis memakai skor tertinggi bila mengerjakan lebih dari sekali.
-        "–" berarti tidak mengerjakan dan dihitung 0. Nilai akhir adalah rata-rata semua kuis.
+        "–" berarti tidak mengerjakan dan dihitung 0. Nilai akhir adalah rata-rata semua kuis,
+        dikonversi ke huruf sesuai tabel konversi yang diatur admin.
     </p>
 @endif
 @endsection

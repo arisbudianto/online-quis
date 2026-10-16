@@ -30,7 +30,7 @@ class SemesterRecapExport implements FromArray, WithHeadings, WithStyles, WithTi
         return array_merge(
             ['NIM', 'Nama', 'Kelas'],
             $this->recap['quizzes']->pluck('title')->all(),
-            ['Nilai Akhir', 'Keterangan'],
+            ['Nilai Akhir', 'Huruf', 'Bobot', 'Keterangan'],
         );
     }
 
@@ -50,7 +50,12 @@ class SemesterRecapExport implements FromArray, WithHeadings, WithStyles, WithTi
             return array_merge(
                 [$row['student']->nim, $row['student']->name, $row['student']->kelas],
                 $cells,
-                [$row['final'], $row['complete'] ? 'Final' : 'Belum final (esai belum dinilai)'],
+                [
+                    $row['final'],
+                    $row['letter'],
+                    $row['weight'],
+                    $row['complete'] ? 'Final' : 'Belum final (esai belum dinilai)',
+                ],
             );
         })->all();
     }

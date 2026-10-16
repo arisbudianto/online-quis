@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\LecturerController;
 use App\Http\Controllers\Admin\StudentController as AdminStudentController;
 use App\Http\Controllers\Admin\BackupController;
 use App\Http\Controllers\Admin\AcademicPeriodController;
+use App\Http\Controllers\Admin\GradeScaleController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -129,6 +130,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('periode', [AcademicPeriodController::class, 'store'])->name('periods.store');
         Route::post('periode/{period}/aktifkan', [AcademicPeriodController::class, 'activate'])->name('periods.activate');
         Route::delete('periode/{period}', [AcademicPeriodController::class, 'destroy'])->name('periods.destroy');
+        // Konversi nilai huruf
+        Route::get('konversi-nilai', [GradeScaleController::class, 'index'])->name('gradeScales.index');
+        Route::put('konversi-nilai', [GradeScaleController::class, 'update'])->name('gradeScales.update');
         Route::get('backup',[BackupController::class, 'index'])->name('backups.index');
         Route::post('backup/jalankan', [BackupController::class, 'runNow'])->name('backups.runNow');
         Route::get('backup/{filename}/unduh', [BackupController::class, 'download'])->name('backups.download');

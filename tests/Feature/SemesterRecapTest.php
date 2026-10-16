@@ -86,6 +86,8 @@ class SemesterRecapTest extends TestCase
         $this->assertSame(SemesterGradeService::CELL_NONE, $row['cells'][$q3->id]['status']);
         $this->assertTrue($row['complete']);
         $this->assertSame(55.0, $row['final'], '(90 + 75 + 0) / 3 = 55');
+        $this->assertSame('D', $row['letter']);
+        $this->assertSame(2.0, $row['weight']);
     }
 
     public function test_pending_essay_makes_final_not_final(): void
@@ -102,6 +104,7 @@ class SemesterRecapTest extends TestCase
         $this->assertSame(SemesterGradeService::CELL_PENDING, $row['cells'][$q2->id]['status']);
         $this->assertFalse($row['complete']);
         $this->assertNull($row['final']);
+        $this->assertNull($row['letter'], 'Belum final tidak boleh diberi huruf.');
     }
 
     public function test_graded_attempt_wins_over_pending_retry(): void
@@ -229,9 +232,9 @@ class SemesterRecapTest extends TestCase
             ->assertOk();
 
         Excel::assertDownloaded('rekap-basis-data-2026-ganjil.xlsx', function (SemesterRecapExport $export) {
-            $this->assertSame(['NIM', 'Nama', 'Kelas', 'Q1', 'Q2', 'Nilai Akhir', 'Keterangan'], $export->headings());
+            $this->assertSame(['NIM', 'Nama', 'Kelas', 'Q1', 'Q2', 'Nilai Akhir', 'Huruf', 'Bobot', 'Keterangan'], $export->headings());
             $this->assertSame(
-                [['K3526060', 'Mhs K3526060', 'A', 80.0, 'Tidak mengerjakan', 40.0, 'Final']],
+                [['K3526060', 'Mhs K3526060', 'A', 80.0, 'Tidak mengerjakan', 40.0, 'E', 0.0, 'Final']],
                 $export->array()
             );
             return true;

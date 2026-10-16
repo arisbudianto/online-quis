@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AcademicPeriod;
 use App\Models\Attempt;
 use App\Models\Course;
+use App\Models\GradeScale;
 use App\Models\Quiz;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -62,7 +63,9 @@ class SemesterGradeService
         $kelasOptions = $byUser->map(fn ($a) => $a->first()->user->kelas)
             ->filter()->unique()->sort()->values()->all();
 
-        $rows = $byUser->map(function (Collection $userAttempts) use ($quizzes) {
+        $scales = GradeScale::ordered();
+
+        $rows = $byUser->map(function (Collection $userAttempts) use ($quizzes, $scales) {
             $student = $userAttempts->first()->user;
             $byQuiz = $userAttempts->groupBy('quiz_id');
 
@@ -77,10 +80,14 @@ class SemesterGradeService
                 ? round(collect($cells)->avg(fn ($c) => $c['score'] ?? self::MISSING_SCORE), 2)
                 : null;
 
+            $grade = $final !== null ? GradeScale::resolve($final, $scales) : null;
+
             return [
                 'student' => $student,
                 'cells' => $cells,
                 'final' => $final,
+                'letter' => $grade?->letter,
+                'weight' => $grade?->weight,
                 'complete' => $complete,
             ];
         })

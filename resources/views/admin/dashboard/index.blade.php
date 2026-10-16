@@ -77,5 +77,14 @@
             </div>
         </div>
     </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5>Konversi Nilai Huruf</h5>
+                <p class="text-muted small">Batas nilai angka dan bobot tiap huruf (A sampai E) untuk rekap semester.</p>
+                <a href="{{ route('admin.gradeScales.index') }}" class="btn btn-primary btn-sm">Buka →</a>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
