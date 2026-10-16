@@ -50,7 +50,7 @@
                             Sign in <span aria-hidden="true">&rarr;</span>
                         </a>
                         <a href="{{ route('register') }}" class="inline-flex items-center gap-2 rounded-none border border-black px-6 py-3 text-sm font-bold text-[#111111] transition hover:border-[#DC3B1C] hover:text-[#DC3B1C]">
-                            Register as Student
+                            Register
                         </a>
                     </div>
                 </div>
