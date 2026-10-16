@@ -38,6 +38,17 @@ class QuizController extends Controller
     {
         $user = $request->user();
 
+        // Kuis privat hanya boleh dimulai oleh pemegang kode. Tanpa cek ini,
+        // siapa pun bisa POST ke /kuis/{id}/mulai dengan ID berurutan.
+        if (!$quiz->is_public) {
+            $givenCode = strtoupper(trim((string) $request->input('code')));
+            abort_unless(
+                !empty($quiz->code) && hash_equals($quiz->code, $givenCode),
+                403,
+                'Kuis privat hanya bisa dimulai lewat kode kuis.'
+            );
+        }
+
         abort_unless($quiz->isOpenNow(), 403, 'Kuis belum dibuka atau sudah ditutup.');
 
         $attemptCount = Attempt::where('quiz_id', $quiz->id)->where('user_id', $user->id)->count();

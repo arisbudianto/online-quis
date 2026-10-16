@@ -25,6 +25,7 @@
                 @else
                     <form method="POST" action="{{ route('mahasiswa.quizzes.start', $quiz) }}" class="mt-3">
                         @csrf
+                        <input type="hidden" name="code" value="{{ $quiz->code }}">
                         <button class="btn btn-primary">Mulai Kuis</button>
                     </form>
                 @endif
