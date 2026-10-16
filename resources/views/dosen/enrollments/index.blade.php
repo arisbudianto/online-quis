@@ -28,6 +28,34 @@
 @if ($period)
 <div class="row">
     <div class="col-lg-5">
+        <div class="card mb-3 border-success">
+            <div class="card-header">Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}</div>
+            <div class="card-body">
+                <p class="small text-muted mb-2">
+                    Terdaftar di aplikasi:
+                    @foreach (\App\Models\User::KELAS as $k)
+                        kelas {{ $k }} {{ $kelasCounts[$k] ?? 0 }}{{ $loop->last ? '' : ',' }}
+                    @endforeach
+                    (total {{ $kelasCounts->sum() }}). Mahasiswa yang sudah terdaftar dilewati.
+                </p>
+                <form method="POST" action="{{ route('dosen.enrollments.storeAllKelas', $course) }}" class="row g-2 align-items-end"
+                      onsubmit="return confirm('Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}' + (this.nim_prefix.value ? ' dengan awalan NIM ' + this.nim_prefix.value.toUpperCase() : '') + ' ke {{ addslashes($course->name) }} ({{ $period->label }})?')">
+                    @csrf
+                    <input type="hidden" name="academic_period_id" value="{{ $period->id }}">
+                    <div class="col-7">
+                        <label class="form-label small mb-1">Awalan NIM (opsional)</label>
+                        <input type="text" name="nim_prefix" class="form-control form-control-sm" placeholder="contoh K3526">
+                    </div>
+                    <div class="col-5">
+                        <button class="btn btn-success btn-sm w-100">Daftarkan semua</button>
+                    </div>
+                    <div class="col-12 form-text">
+                        Isi awalan NIM bila mata kuliah ini hanya untuk satu angkatan, supaya angkatan lain tidak ikut terdaftar.
+                    </div>
+                </form>
+            </div>
+        </div>
+
         <div class="card mb-3">
             <div class="card-header">Tambah dari daftar NIM</div>
             <div class="card-body">

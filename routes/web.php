@@ -67,6 +67,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('mata-kuliah/{course}/peserta', [CourseEnrollmentController::class, 'index'])->name('enrollments.index');
         Route::post('mata-kuliah/{course}/peserta/nim', [CourseEnrollmentController::class, 'storeNims'])->name('enrollments.storeNims');
         Route::post('mata-kuliah/{course}/peserta/kelas', [CourseEnrollmentController::class, 'storeKelas'])->name('enrollments.storeKelas');
+        Route::post('mata-kuliah/{course}/peserta/semua-kelas', [CourseEnrollmentController::class, 'storeAllKelas'])->name('enrollments.storeAllKelas');
         Route::delete('mata-kuliah/{course}/peserta/{enrollment}', [CourseEnrollmentController::class, 'destroy'])->name('enrollments.destroy');
         Route::post('quizzes/{quiz}/import', [QuestionImportController::class, 'store'])->name('quizzes.import');
         Route::get('quizzes/{quiz}/scores', [ScoreController::class, 'index'])->name('quizzes.scores');

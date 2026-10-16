@@ -9,6 +9,7 @@ use App\Models\CourseEnrollment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Validation\Rule;
 
 class CourseEnrollmentController extends Controller
 {
@@ -28,10 +29,17 @@ class CourseEnrollmentController extends Controller
                 ->values()
             : collect();
 
-        $kelasOptions = User::where('role', 'mahasiswa')->whereNotNull('kelas')
-            ->distinct()->orderBy('kelas')->pluck('kelas');
+        $kelasOptions = collect(User::KELAS);
 
-        return view('dosen.enrollments.index', compact('course', 'periods', 'period', 'enrollments', 'kelasOptions'));
+        // Jumlah mahasiswa per kelas resmi, ditampilkan sebelum dosen
+        // menekan "daftarkan semua".
+        $kelasCounts = User::where('role', 'mahasiswa')
+            ->whereIn('kelas', User::KELAS)
+            ->selectRaw('kelas, count(*) as total')
+            ->groupBy('kelas')
+            ->pluck('total', 'kelas');
+
+        return view('dosen.enrollments.index', compact('course', 'periods', 'period', 'enrollments', 'kelasOptions', 'kelasCounts'));
     }
 
     /** Tambah peserta dari daftar NIM (dipisah baris, spasi, koma, atau titik koma). */
@@ -77,19 +85,45 @@ class CourseEnrollmentController extends Controller
 
         $data = $request->validate([
             'academic_period_id' => ['required', 'exists:academic_periods,id'],
-            'kelas' => ['required', 'string', 'max:10'],
+            'kelas' => ['required', Rule::in(User::KELAS)],
             'nim_prefix' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
         ]);
 
-        $ids = User::where('role', 'mahasiswa')
-            ->where('kelas', $data['kelas'])
-            ->when(!empty($data['nim_prefix']), fn ($q) => $q->where('nim', 'like', strtoupper($data['nim_prefix']) . '%'))
-            ->pluck('id');
-
+        $ids = $this->studentIds([$data['kelas']], $data['nim_prefix'] ?? null);
         $added = $this->enroll($course, (int) $data['academic_period_id'], $ids);
 
         return redirect()->route('dosen.enrollments.index', [$course, 'periode' => $data['academic_period_id']])
             ->with('status', "{$added} mahasiswa kelas {$data['kelas']} ditambahkan dari {$ids->count()} yang cocok.");
+    }
+
+    /** Tambah semua mahasiswa kelas A, B, dan C sekaligus, opsional dibatasi awalan NIM. */
+    public function storeAllKelas(Request $request, Course $course)
+    {
+        $this->authorizeCourse($request, $course);
+
+        $data = $request->validate([
+            'academic_period_id' => ['required', 'exists:academic_periods,id'],
+            'nim_prefix' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
+        ]);
+
+        $ids = $this->studentIds(User::KELAS, $data['nim_prefix'] ?? null);
+        $added = $this->enroll($course, (int) $data['academic_period_id'], $ids);
+
+        $scope = 'kelas ' . implode(', ', User::KELAS)
+            . (!empty($data['nim_prefix']) ? ' dengan awalan NIM ' . strtoupper($data['nim_prefix']) : '');
+
+        return redirect()->route('dosen.enrollments.index', [$course, 'periode' => $data['academic_period_id']])
+            ->with('status', "{$added} mahasiswa {$scope} ditambahkan dari {$ids->count()} yang cocok."
+                . ($ids->count() > $added ? ' ' . ($ids->count() - $added) . ' sudah terdaftar sebelumnya.' : ''));
+    }
+
+    /** @param array<int, string> $kelas */
+    private function studentIds(array $kelas, ?string $nimPrefix): Collection
+    {
+        return User::where('role', 'mahasiswa')
+            ->whereIn('kelas', $kelas)
+            ->when(!empty($nimPrefix), fn ($q) => $q->where('nim', 'like', strtoupper($nimPrefix) . '%'))
+            ->pluck('id');
     }
 
     public function destroy(Request $request, Course $course, CourseEnrollment $enrollment)

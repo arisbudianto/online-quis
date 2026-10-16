@@ -164,4 +164,65 @@ class CourseEnrollmentTest extends TestCase
 
         $this->assertNotNull($this->period->fresh());
     }
+
+    public function test_add_all_kelas_a_b_c_skips_other_kelas_and_duplicates(): void
+    {
+        $this->mhs('K3526001', 'A');
+        $this->mhs('K3526002', 'B');
+        $this->mhs('K3526003', 'C');
+        $this->mhs('K3525004', 'A');
+        $this->mhs('K3526005', 'TI-3A');   // kelas di luar daftar resmi
+        $this->mhs('K3526002X', 'B')->update(['role' => 'dosen']);
+
+        $this->actingAs($this->dosen)->get(route('dosen.enrollments.index', $this->course))
+            ->assertOk()->assertSee('Daftarkan semua mahasiswa kelas A, B, C')->assertSee('total 4');
+
+        $this->actingAs($this->dosen)
+            ->post(route('dosen.enrollments.storeAllKelas', $this->course), ['academic_period_id' => $this->period->id])
+            ->assertSessionHas('status', '4 mahasiswa kelas A, B, C ditambahkan dari 4 yang cocok.');
+
+        $this->assertSame(['K3525004', 'K3526001', 'K3526002', 'K3526003'], $this->enrolledNims());
+
+        // Diulang: tidak menggandakan.
+        $this->actingAs($this->dosen)
+            ->post(route('dosen.enrollments.storeAllKelas', $this->course), ['academic_period_id' => $this->period->id])
+            ->assertSessionHas('status', '0 mahasiswa kelas A, B, C ditambahkan dari 4 yang cocok. 4 sudah terdaftar sebelumnya.');
+        $this->assertSame(4, CourseEnrollment::count());
+    }
+
+    public function test_add_all_kelas_with_nim_prefix_limits_to_one_angkatan(): void
+    {
+        $this->mhs('K3526001', 'A');
+        $this->mhs('K3526002', 'C');
+        $this->mhs('K3525003', 'B');
+
+        $this->actingAs($this->dosen)
+            ->post(route('dosen.enrollments.storeAllKelas', $this->course), [
+                'academic_period_id' => $this->period->id, 'nim_prefix' => 'k3526',
+            ])
+            ->assertSessionHas('status', '2 mahasiswa kelas A, B, C dengan awalan NIM K3526 ditambahkan dari 2 yang cocok.');
+
+        $this->assertSame(['K3526001', 'K3526002'], $this->enrolledNims());
+    }
+
+    public function test_other_dosen_cannot_add_all_kelas(): void
+    {
+        $this->mhs('K3526001', 'A');
+        $other = User::factory()->create(['role' => 'dosen']);
+
+        $this->actingAs($other)
+            ->post(route('dosen.enrollments.storeAllKelas', $this->course), ['academic_period_id' => $this->period->id])
+            ->assertForbidden();
+
+        $this->assertSame(0, CourseEnrollment::count());
+    }
+
+    public function test_single_kelas_rejects_unknown_kelas(): void
+    {
+        $this->actingAs($this->dosen)
+            ->post(route('dosen.enrollments.storeKelas', $this->course), [
+                'academic_period_id' => $this->period->id, 'kelas' => 'TI-3A',
+            ])
+            ->assertSessionHasErrors('kelas');
+    }
 }
