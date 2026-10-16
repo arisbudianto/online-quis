@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dosen;
 
 use App\Http\Controllers\Controller;
+use App\Models\AcademicPeriod;
 use App\Models\Course;
 use App\Models\Quiz;
 use App\Notifications\QuizPublishedNotification;
@@ -14,24 +15,41 @@ class QuizController extends Controller
 {
     public function index(Request $request)
     {
+        // Filter: '' = semua, 'none' = belum diisi, selain itu ID.
+        $periodFilter = (string) $request->query('periode', '');
+        $courseFilter = (string) $request->query('mk', '');
+
         $quizzes = Quiz::where('dosen_id', $request->user()->id)
-            ->with('course')
+            ->with(['course', 'academicPeriod'])
             ->withCount([
                 'questions',
                 'attempts',
                 'attempts as submitted_count' => fn ($q) => $q->where('status', 'submitted'),
             ])
+            ->when($periodFilter === 'none', fn ($q) => $q->whereNull('academic_period_id'))
+            ->when(ctype_digit($periodFilter), fn ($q) => $q->where('academic_period_id', (int) $periodFilter))
+            ->when($courseFilter === 'none', fn ($q) => $q->whereNull('course_id'))
+            ->when(ctype_digit($courseFilter), fn ($q) => $q->where('course_id', (int) $courseFilter))
             ->latest()
-            ->paginate(10);
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('dosen.quizzes.index', compact('quizzes'));
+        return view('dosen.quizzes.index', [
+            'quizzes' => $quizzes,
+            'periods' => AcademicPeriod::latestFirst()->get(),
+            'courses' => Course::where('dosen_id', $request->user()->id)->orderBy('name')->get(),
+            'periodFilter' => $periodFilter,
+            'courseFilter' => $courseFilter,
+        ]);
     }
 
     public function create(Request $request)
     {
         $courses = Course::where('dosen_id', $request->user()->id)->orderBy('name')->get();
+        $periods = AcademicPeriod::latestFirst()->get();
+        $defaultPeriodId = AcademicPeriod::active()?->id;
 
-        return view('dosen.quizzes.create', compact('courses'));
+        return view('dosen.quizzes.create', compact('courses', 'periods', 'defaultPeriodId'));
     }
 
     public function store(Request $request)
@@ -40,6 +58,7 @@ class QuizController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'course_id' => ['nullable', 'exists:courses,id'],
+            'academic_period_id' => ['nullable', 'exists:academic_periods,id'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
             'start_time' => ['nullable', 'date'],
             'end_time' => ['nullable', 'date', 'after:start_time'],
@@ -57,6 +76,11 @@ class QuizController extends Controller
         }
 
         $data['dosen_id'] = $request->user()->id;
+        // Field tidak dikirim sama sekali => pakai periode aktif.
+        // Dikirim kosong => dosen sengaja memilih "tanpa periode".
+        if (!$request->has('academic_period_id')) {
+            $data['academic_period_id'] = AcademicPeriod::active()?->id;
+        }
         $data['shuffle_questions'] = $request->boolean('shuffle_questions', true);
         $data['shuffle_options'] = $request->boolean('shuffle_options', true);
 
@@ -72,8 +96,9 @@ class QuizController extends Controller
         $this->authorizeOwner($request, $quiz);
         $quiz->load('questions.options');
         $courses = Course::where('dosen_id', $request->user()->id)->orderBy('name')->get();
+        $periods = AcademicPeriod::latestFirst()->get();
 
-        return view('dosen.quizzes.edit', compact('quiz', 'courses'));
+        return view('dosen.quizzes.edit', compact('quiz', 'courses', 'periods'));
     }
 
     public function update(Request $request, Quiz $quiz)
@@ -84,6 +109,7 @@ class QuizController extends Controller
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'course_id' => ['nullable', 'exists:courses,id'],
+            'academic_period_id' => ['nullable', 'exists:academic_periods,id'],
             'duration_minutes' => ['required', 'integer', 'min:1', 'max:600'],
             'start_time' => ['nullable', 'date'],
             'end_time' => ['nullable', 'date', 'after:start_time'],

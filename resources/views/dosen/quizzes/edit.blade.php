@@ -76,6 +76,17 @@
                         </select>
                     </div>
                     <div class="mb-2">
+                        <label class="form-label">Periode (Tahun Ajaran / Semester)</label>
+                        <select name="academic_period_id" class="form-control">
+                            <option value="">— Tanpa periode —</option>
+                            @foreach ($periods as $period)
+                                <option value="{{ $period->id }}" @selected($quiz->academic_period_id === $period->id)>
+                                    {{ $period->label }}{{ $period->is_active ? ' (aktif)' : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="mb-2">
                         <label class="form-label">Judul</label>
                         <input type="text" name="title" class="form-control" value="{{ $quiz->title }}" required>
                     </div>

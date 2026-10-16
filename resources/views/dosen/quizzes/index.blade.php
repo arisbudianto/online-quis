@@ -11,10 +11,40 @@
     </div>
 </div>
 
+<form method="GET" action="{{ route('dosen.quizzes.index') }}" class="row g-2 align-items-end mb-3">
+    <div class="col-sm-4">
+        <label class="form-label small mb-1">Periode</label>
+        <select name="periode" class="form-select form-select-sm">
+            <option value="">Semua periode</option>
+            @foreach ($periods as $period)
+                <option value="{{ $period->id }}" @selected($periodFilter === (string) $period->id)>{{ $period->label }}</option>
+            @endforeach
+            <option value="none" @selected($periodFilter === 'none')>Belum diisi</option>
+        </select>
+    </div>
+    <div class="col-sm-4">
+        <label class="form-label small mb-1">Mata Kuliah</label>
+        <select name="mk" class="form-select form-select-sm">
+            <option value="">Semua mata kuliah</option>
+            @foreach ($courses as $course)
+                <option value="{{ $course->id }}" @selected($courseFilter === (string) $course->id)>{{ $course->name }}</option>
+            @endforeach
+            <option value="none" @selected($courseFilter === 'none')>Tidak dikaitkan</option>
+        </select>
+    </div>
+    <div class="col-sm-4 d-flex gap-2">
+        <button class="btn btn-sm btn-secondary">Terapkan</button>
+        @if ($periodFilter !== '' || $courseFilter !== '')
+            <a href="{{ route('dosen.quizzes.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+        @endif
+    </div>
+</form>
+
 <table class="table table-bordered bg-white align-middle">
     <thead>
         <tr>
             <th>Judul</th>
+            <th>Periode</th>
             <th>Mata Kuliah</th>
             <th>Kode</th>
             <th>Jumlah Soal</th>
@@ -27,6 +57,7 @@
         @forelse ($quizzes as $quiz)
             <tr>
                 <td>{{ $quiz->title }}</td>
+                <td>{{ $quiz->academicPeriod?->label ?? '—' }}</td>
                 <td>{{ $quiz->course->name ?? '—' }}</td>
                 <td><code>{{ $quiz->code ?? '-' }}</code></td>
                 <td>{{ $quiz->questions_count }}</td>
@@ -58,7 +89,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="7" class="text-center text-muted">Belum ada kuis.</td></tr>
+            <tr><td colspan="8" class="text-center text-muted">Belum ada kuis.</td></tr>
         @endforelse
     </tbody>
 </table>

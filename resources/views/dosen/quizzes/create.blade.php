@@ -21,6 +21,19 @@
     </div>
 
     <div class="mb-3">
+        <label class="form-label">Periode (Tahun Ajaran / Semester)</label>
+        <select name="academic_period_id" class="form-control">
+            <option value="">— Tanpa periode —</option>
+            @foreach ($periods as $period)
+                <option value="{{ $period->id }}" @selected((string) old('academic_period_id', $defaultPeriodId) === (string) $period->id)>
+                    {{ $period->label }}{{ $period->is_active ? ' (aktif)' : '' }}
+                </option>
+            @endforeach
+        </select>
+        <small class="text-muted">Dipakai untuk rekap nilai per semester. Kuis tanpa periode tidak masuk rekap.</small>
+    </div>
+
+    <div class="mb-3">
         <label class="form-label">Judul Kuis</label>
         <input type="text" name="title" class="form-control" value="{{ old('title') }}" required>
     </div>
