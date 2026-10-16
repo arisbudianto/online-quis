@@ -42,7 +42,7 @@ class ScoreController extends Controller
     {
         abort_unless($attempt->quiz->dosen_id === $request->user()->id, 403);
 
-        $attempt->update(['browser_session_id' => null]);
+        $attempt->update(['browser_session_id' => null, 'device_token' => null]);
 
         return back()->with('status', 'Device attempt milik ' . $attempt->user->name . ' berhasil di-reset. Mahasiswa bisa lanjut dari perangkat manapun sekarang.');
     }

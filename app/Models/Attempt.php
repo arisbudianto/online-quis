@@ -12,7 +12,7 @@ class Attempt extends Model
     protected $fillable = [
         'quiz_id', 'user_id', 'question_order', 'started_at', 'deadline_at',
         'submitted_at', 'score', 'status', 'tab_switch_count',
-        'browser_session_id', 'ip_address', 'user_agent', 'needs_grading',
+        'browser_session_id', 'device_token', 'ip_address', 'user_agent', 'needs_grading',
     ];
 
     protected $casts = [
@@ -43,11 +43,25 @@ class Attempt extends Model
         return now()->gt($this->deadline_at);
     }
 
-    public function isFromDifferentDevice(string $currentSessionId): bool
+    /**
+     * Bandingkan device_token (cookie berumur panjang, independen dari
+     * session Laravel) -- BUKAN session()->getId() seperti sebelumnya.
+     * session()->getId() bisa berubah sendiri karena alasan teknis biasa
+     * (garbage collection, dsb), yang dulu menyebabkan mahasiswa salah
+     * dianggap ganti device padahal masih di browser yang sama, dan
+     * attempt-nya nyangkut "in_progress" selamanya.
+     *
+     * Kalau attempt lama belum punya device_token (dibuat sebelum kolom
+     * ini ada), anggap dulu cocok (null-safe) supaya tidak mendadak
+     * mengunci attempt yang sedang berjalan di tengah rilis fitur ini.
+     */
+    public function isFromDifferentDevice(?string $currentDeviceToken): bool
     {
-        return $this->status === 'in_progress'
-            && !empty($this->browser_session_id)
-            && $this->browser_session_id !== $currentSessionId;
+        if ($this->status !== 'in_progress' || empty($this->device_token)) {
+            return false;
+        }
+
+        return $this->device_token !== $currentDeviceToken;
     }
 
     /**

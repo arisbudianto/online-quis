@@ -13,7 +13,7 @@ class Quiz extends Model
         'code', 'dosen_id', 'course_id', 'title', 'description',
         'duration_minutes', 'start_time', 'end_time', 'max_attempts',
         'shuffle_questions', 'shuffle_options', 'questions_to_show',
-        'is_published', 'target_kelas',
+        'is_published', 'target_kelas', 'is_public',
     ];
 
     protected $casts = [
@@ -22,6 +22,7 @@ class Quiz extends Model
         'shuffle_questions' => 'boolean',
         'shuffle_options' => 'boolean',
         'is_published' => 'boolean',
+        'is_public' => 'boolean',
         'target_kelas' => 'array',
     ];
 

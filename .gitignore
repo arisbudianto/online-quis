@@ -30,3 +30,5 @@ public/uploads/*
 !public/uploads/.gitkeep
 !public/uploads/questions/.gitkeep
 !public/uploads/questions/.htaccess
+quis.zip
+*.bak

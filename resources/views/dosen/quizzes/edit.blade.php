@@ -107,6 +107,17 @@
                         <input type="checkbox" name="is_published" value="1" class="form-check-input" {{ $quiz->is_published ? 'checked' : '' }}>
                         <label class="form-check-label"><strong>Terbitkan kuis (mahasiswa bisa mengerjakan)</strong></label>
                     </div>
+                    <div class="form-check mb-3">
+                        <input type="checkbox" name="is_public" value="1" class="form-check-input" id="is_public_check" {{ $quiz->is_public ? 'checked' : '' }}>
+                        <label class="form-check-label" for="is_public_check">
+                            Tampilkan di daftar "Kuis Tersedia" mahasiswa
+                        </label>
+                        <div class="form-text">
+                            Matikan supaya kuis ini <strong>hanya</strong> bisa diakses lewat
+                            "Masukkan Kode Kuis" / scan QR (kode: <strong>{{ $quiz->code }}</strong>),
+                            tidak muncul di daftar publik.
+                        </div>
+                    </div>
                     <button class="btn btn-success btn-sm">Simpan Pengaturan</button>
                 </form>
             </div>

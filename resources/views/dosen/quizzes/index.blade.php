@@ -40,6 +40,9 @@
                     @else
                         <span class="badge bg-danger">🔴 Sudah Tutup</span>
                     @endif
+                    <span class="badge {{ $quiz->is_public ? 'bg-info text-dark' : 'bg-dark' }}">
+                        {{ $quiz->is_public ? 'Publik' : '🔒 Privat (kode saja)' }}
+                    </span>
                 </td>
                 <td>
                     <strong>{{ $quiz->submitted_count }}</strong> mahasiswa

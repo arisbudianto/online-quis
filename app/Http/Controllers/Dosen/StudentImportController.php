@@ -94,15 +94,32 @@ class StudentImportController extends Controller
 
     public function index(Request $request)
     {
-        $kelas = $request->query('kelas');
+        $angkatan = $request->query('angkatan');
+        $kelas    = $request->query('kelas');
 
         $students = User::where('role', 'mahasiswa')
+            ->when($angkatan, function ($q) use ($angkatan) {
+                if ($angkatan === '2024') {
+                    $q->where('nim', 'like', 'K3524%');
+                } elseif ($angkatan === '2025') {
+                    $q->where('nim', 'like', 'K3525%');
+                } elseif ($angkatan === '2026') {
+                    $q->where(function ($q2) {
+                        $q2->whereRaw('nim REGEXP ?', ['^[0-9]{10,}$'])
+                           ->orWhere(function ($q3) {
+                               $q3->where('nim', 'not like', 'K3524%')
+                                  ->where('nim', 'not like', 'K3525%')
+                                  ->whereRaw('CHAR_LENGTH(nim) >= 10');
+                           });
+                    });
+                }
+            })
             ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
             ->orderBy('kelas')
             ->orderBy('name')
             ->paginate(30)
             ->withQueryString();
 
-        return view('dosen.students.index', compact('students', 'kelas'));
+        return view('dosen.students.index', compact('students', 'angkatan', 'kelas'));
     }
 }

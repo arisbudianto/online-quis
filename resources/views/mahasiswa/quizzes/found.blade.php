@@ -7,6 +7,9 @@
         <div class="card">
             <div class="card-body">
                 <h4>{{ $quiz->title }}</h4>
+                @unless ($quiz->is_public)
+                    <span class="badge bg-dark mb-2">🔒 Kuis Privat — hanya bisa diakses lewat kode ini</span>
+                @endunless
                 <p class="text-muted">{{ $quiz->description }}</p>
                 <p class="mb-1">Durasi: {{ $quiz->duration_minutes }} menit</p>
                 <p class="mb-1">Percobaan: {{ $used }} / {{ $quiz->max_attempts }}</p>

@@ -90,6 +90,7 @@ class QuizController extends Controller
             'max_attempts' => ['required', 'integer', 'min:1', 'max:10'],
             'questions_to_show' => ['nullable', 'integer', 'min:1'],
             'is_published' => ['nullable', 'boolean'],
+            'is_public' => ['nullable', 'boolean'],
             'target_kelas' => ['nullable', 'array'],
             'target_kelas.*' => ['in:A,B,C'],
             'notify_students' => ['nullable', 'boolean'],
@@ -106,6 +107,11 @@ class QuizController extends Controller
         $data['shuffle_questions'] = $request->boolean('shuffle_questions', true);
         $data['shuffle_options'] = $request->boolean('shuffle_options', true);
         $data['is_published'] = $request->boolean('is_published', false);
+        // PENTING: default HARUS false, bukan true. Kalau default true,
+        // checkbox yang di-uncheck (tidak terkirim oleh browser) akan selalu
+        // dibaca sebagai true juga -- membuat toggle privat tidak pernah
+        // benar-benar bisa dimatikan. (Ini bug yang sempat ada sebelumnya.)
+        $data['is_public'] = $request->boolean('is_public', false);
         $data['target_kelas'] = !empty($data['target_kelas']) ? $data['target_kelas'] : null;
 
         $notifyStudents = $request->boolean('notify_students', false);

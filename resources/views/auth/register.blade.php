@@ -30,7 +30,7 @@
                     <label for="kelas" class="text-xs font-bold uppercase tracking-wide text-gray-700">Kelas</label>
                     <select id="kelas" name="kelas" required class="block mt-1.5 w-full rounded-none border-gray-300 py-2 focus:border-[#DC3B1C] focus:ring-[#DC3B1C]">
                         <option value="" disabled {{ old('kelas') ? '' : 'selected' }}>Pilih kelas</option>
-                        @foreach (['A', 'B', 'C'] as $opt)
+                        @foreach (['A', 'B', 'C', 'D'] as $opt)
                             <option value="{{ $opt }}" {{ old('kelas') === $opt ? 'selected' : '' }}>{{ $opt }}</option>
                         @endforeach
                     </select>

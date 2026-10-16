@@ -6,13 +6,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Attempt;
 use App\Models\Quiz;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class QuizController extends Controller
 {
     public function index(Request $request)
     {
         $quizzes = Quiz::where('is_published', true)
+            // Kuis privat (is_public = false) sengaja TIDAK ikut di sini --
+            // hanya bisa diakses lewat "Masukkan Kode Kuis" / scan QR.
+            ->where('is_public', true)
             ->where(function ($q) use ($request) {
                 $q->whereNull('target_kelas')
                   ->orWhereJsonContains('target_kelas', $request->user()->kelas);
@@ -59,7 +64,19 @@ class QuizController extends Controller
 
         abort_if(empty($questionIds), 422, 'Kuis ini belum memiliki soal.');
 
-        $attempt = DB::transaction(function () use ($quiz, $user, $questionIds, $request) {
+        // Token perangkat yang stabil -- dipakai ulang kalau browser ini
+        // sudah pernah punya (misal sedang/baru selesai kuis lain), atau
+        // dibuat baru kalau belum ada. Disimpan sebagai cookie berumur
+        // panjang, TERPISAH dari session login, supaya navigasi biasa
+        // (klik back, tab baru, dsb) tidak ikut mengubahnya.
+        $deviceToken = $request->cookie('qz_device_id') ?: Str::random(48);
+        Cookie::queue(Cookie::make(
+            'qz_device_id',
+            $deviceToken,
+            60 * 24 * 30 // 30 hari, jauh melebihi durasi kuis manapun
+        ));
+
+        $attempt = DB::transaction(function () use ($quiz, $user, $questionIds, $request, $deviceToken) {
             $attempt = Attempt::create([
                 'quiz_id' => $quiz->id,
                 'user_id' => $user->id,
@@ -68,6 +85,7 @@ class QuizController extends Controller
                 'deadline_at' => now()->addMinutes($quiz->duration_minutes),
                 'status' => 'in_progress',
                 'browser_session_id' => $request->session()->getId(),
+                'device_token' => $deviceToken,
                 'ip_address' => $request->ip(),
                 'user_agent' => (string) $request->userAgent(),
             ]);
@@ -248,7 +266,7 @@ class QuizController extends Controller
 
     private function deviceMismatchResponse(Request $request, Attempt $attempt)
     {
-        if (!$attempt->isFromDifferentDevice($request->session()->getId())) {
+        if (!$attempt->isFromDifferentDevice($request->cookie('qz_device_id'))) {
             return null;
         }
         if ($request->expectsJson()) {
