@@ -68,5 +68,14 @@
             </div>
         </div>
     </div>
+    <div class="col-md-4 mb-3">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5>Periode Akademik</h5>
+                <p class="text-muted small">Tahun ajaran dan semester. Kuis baru memakai periode aktif.</p>
+                <a href="{{ route('admin.periods.index') }}" class="btn btn-primary btn-sm">Buka →</a>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection

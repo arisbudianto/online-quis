@@ -10,7 +10,7 @@ class Quiz extends Model
     use HasFactory;
 
     protected $fillable = [
-        'code', 'dosen_id', 'course_id', 'title', 'description',
+        'code', 'dosen_id', 'course_id', 'academic_period_id', 'title', 'description',
         'duration_minutes', 'start_time', 'end_time', 'max_attempts',
         'shuffle_questions', 'shuffle_options', 'questions_to_show',
         'is_published', 'target_kelas', 'is_public',
@@ -57,6 +57,11 @@ class Quiz extends Model
     public function course()
     {
         return $this->belongsTo(Course::class);
+    }
+
+    public function academicPeriod()
+    {
+        return $this->belongsTo(AcademicPeriod::class);
     }
 
     public function questions()

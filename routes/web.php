@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\DashboardController as AdminDashboardController;
 use App\Http\Controllers\Admin\LecturerController;
 use App\Http\Controllers\Admin\StudentController as AdminStudentController;
 use App\Http\Controllers\Admin\BackupController;
+use App\Http\Controllers\Admin\AcademicPeriodController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -119,7 +120,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('dosen/tambah', [LecturerController::class, 'create'])->name('lecturers.create');
         Route::post('dosen', [LecturerController::class, 'store'])->name('lecturers.store');
         Route::get('mahasiswa', [AdminStudentController::class, 'index'])->name('students.index');
-        Route::get('backup', [BackupController::class, 'index'])->name('backups.index');
+        // Periode Akademik
+        Route::get('periode', [AcademicPeriodController::class, 'index'])->name('periods.index');
+        Route::post('periode', [AcademicPeriodController::class, 'store'])->name('periods.store');
+        Route::post('periode/{period}/aktifkan', [AcademicPeriodController::class, 'activate'])->name('periods.activate');
+        Route::delete('periode/{period}', [AcademicPeriodController::class, 'destroy'])->name('periods.destroy');
+        Route::get('backup',[BackupController::class, 'index'])->name('backups.index');
         Route::post('backup/jalankan', [BackupController::class, 'runNow'])->name('backups.runNow');
         Route::get('backup/{filename}/unduh', [BackupController::class, 'download'])->name('backups.download');
     });
