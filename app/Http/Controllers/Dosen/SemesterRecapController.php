@@ -6,6 +6,7 @@ use App\Exports\SemesterRecapExport;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicPeriod;
 use App\Models\Course;
+use App\Services\SemesterAnalyticsService;
 use App\Services\SemesterGradeService;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -25,6 +26,22 @@ class SemesterRecapController extends Controller
             : null;
 
         return view('dosen.recap.index', compact('periods', 'courses', 'period', 'course', 'kelas', 'recap'));
+    }
+
+    public function analytics(Request $request, SemesterGradeService $service, SemesterAnalyticsService $analytics)
+    {
+        $user = $request->user();
+        $periods = AcademicPeriod::latestFirst()->get();
+        $courses = Course::where('dosen_id', $user->id)->orderBy('name')->get();
+
+        [$period, $course, $kelas] = $this->selection($request, $periods, $courses);
+
+        $recap = ($period && $course) ? $service->build($user, $course, $period, $kelas) : null;
+        $stats = ($recap && $recap['quizzes']->isNotEmpty() && $recap['enrolledCount'] > 0)
+            ? $analytics->build($recap)
+            : null;
+
+        return view('dosen.recap.analytics', compact('periods', 'courses', 'period', 'course', 'kelas', 'recap', 'stats'));
     }
 
     public function export(Request $request, SemesterGradeService $service)

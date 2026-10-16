@@ -72,8 +72,12 @@
             {{ $course->name }} · {{ $period->label }} · {{ $recap['quizzes']->count() }} kuis · {{ $recap['rows']->count() }} peserta
             · <a href="{{ route('dosen.enrollments.index', [$course, 'periode' => $period->id]) }}">kelola peserta</a>
         </div>
-        <a href="{{ route('dosen.recap.export', ['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas]) }}"
-           class="btn btn-sm btn-success">Export Excel</a>
+        <div class="d-flex gap-2">
+            <a href="{{ route('dosen.recap.analytics', array_filter(['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas])) }}"
+               class="btn btn-sm btn-outline-primary">📊 Analitik</a>
+            <a href="{{ route('dosen.recap.export', ['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas]) }}"
+               class="btn btn-sm btn-success">Export Excel</a>
+        </div>
     </div>
 
     <div class="table-responsive">

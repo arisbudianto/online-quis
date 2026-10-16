@@ -62,6 +62,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Rekap nilai per mata kuliah per periode
         Route::get('rekap', [SemesterRecapController::class, 'index'])->name('recap.index');
         Route::get('rekap/export', [SemesterRecapController::class, 'export'])->name('recap.export');
+        Route::get('rekap/analitik', [SemesterRecapController::class, 'analytics'])->name('recap.analytics');
         // Peserta resmi mata kuliah per periode
         Route::get('mata-kuliah/{course}/peserta', [CourseEnrollmentController::class, 'index'])->name('enrollments.index');
         Route::post('mata-kuliah/{course}/peserta/nim', [CourseEnrollmentController::class, 'storeNims'])->name('enrollments.storeNims');
