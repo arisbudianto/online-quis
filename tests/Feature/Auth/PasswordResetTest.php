@@ -71,16 +71,67 @@ class PasswordResetTest extends TestCase
         });
     }
 
-    public function test_rejected_recipient_shows_error_instead_of_500(): void
+    private function failingMail(): void
     {
-        $user = User::factory()->create(['email' => 'admin@contoh.test']);
-
-        \Illuminate\Support\Facades\Notification::shouldReceive('send')->andThrow(
+        Notification::shouldReceive('send')->andThrow(
             new \Symfony\Component\Mailer\Exception\UnexpectedResponseException('550 No Such User Here', 550)
         );
+    }
 
-        $this->post('/forgot-password', ['email' => $user->email])
-            ->assertRedirect()
-            ->assertSessionHasErrors('email');
+    public function test_sent_link_lands_on_check_email_page(): void
+    {
+        Notification::fake();
+        $user = User::factory()->create(['email' => 'ada@contoh.test']);
+
+        $this->post('/forgot-password', ['email' => 'ADA@contoh.test'])->assertRedirect(route('password.result'));
+        $this->get(route('password.result'))->assertOk()->assertSee('Cek email Anda')->assertSee('ada@contoh.test');
+        Notification::assertSentTo($user, ResetPassword::class);
+    }
+
+    public function test_unknown_email_lands_on_not_registered_page(): void
+    {
+        $this->post('/forgot-password', ['email' => 'tidakada@contoh.test'])->assertRedirect(route('password.result'));
+        $this->get(route('password.result'))->assertOk()
+            ->assertSee('Email belum terdaftar')->assertSee('Daftar akun baru');
+    }
+
+    public function test_rejected_recipient_lands_on_undeliverable_page_not_500(): void
+    {
+        User::factory()->create(['email' => 'admin@contoh.test']);
+        $this->failingMail();
+
+        $this->post('/forgot-password', ['email' => 'admin@contoh.test'])->assertRedirect(route('password.result'));
+        $this->get(route('password.result'))->assertOk()
+            ->assertSee('Email tidak bisa dikirim')->assertSee('minta dosen/guru Anda');
+    }
+
+    public function test_result_page_without_request_goes_back_to_form(): void
+    {
+        $this->get(route('password.result'))->assertRedirect(route('password.request'));
+    }
+
+    public function test_verification_email_failure_does_not_break_registration_or_resend(): void
+    {
+        $teacher = $this->makeTeacher();
+        $this->failingMail();
+
+        $this->post('/register', [
+            'role' => 'mahasiswa', 'teachers' => [$teacher->id], 'kelas' => 'A',
+            'name' => 'Siswa', 'nim' => 'S900', 'email' => 'mati@contoh.test',
+            'password' => 'rahasia123', 'password_confirmation' => 'rahasia123',
+        ])->assertRedirect('/dashboard');
+        $this->assertAuthenticated();
+
+        $this->post(route('verification.send'))->assertRedirect();
+        $this->assertNotNull(session('mail_error'));
+    }
+
+    public function test_server_error_page_is_friendly_indonesian(): void
+    {
+        config(['app.debug' => false]);
+        \Illuminate\Support\Facades\Route::get('/_uji-500', fn () => throw new \RuntimeException('rusak'));
+
+        $this->get('/_uji-500')->assertStatus(500)
+            ->assertSee('Ada gangguan di server')->assertDontSee('rusak');
     }
 }

@@ -3,25 +3,27 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Support\GoogleOAuth;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Password;
 use Illuminate\View\View;
+use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 
 class PasswordResetLinkController extends Controller
 {
-    /**
-     * Display the password reset link request view.
-     */
+    /** Hasil yang punya halaman sendiri. */
+    private const RESULTS = ['sent', 'unknown', 'undeliverable'];
+
     public function create(): View
     {
         return view('auth.forgot-password');
     }
 
     /**
-     * Handle an incoming password reset link request.
-     *
-     * @throws \Illuminate\Validation\ValidationException
+     * Kirim link reset. Apa pun hasilnya (terkirim, email belum terdaftar,
+     * atau server email menolak alamat), pengguna diarahkan ke halaman
+     * hasil yang menjelaskan langkah berikutnya, bukan error 500.
      */
     public function store(Request $request): RedirectResponse
     {
@@ -29,27 +31,47 @@ class PasswordResetLinkController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        try {
-            $status = Password::sendResetLink(
-                $request->only('email')
-            );
-        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
-            // Server email menolak alamat tujuan (mis. "550 No Such User Here")
-            // atau tidak bisa dihubungi. Tampilkan pesan, jangan error 500.
-            report($e);
+        $email = strtolower(trim($request->input('email')));
 
-            return back()->withInput($request->only('email'))->withErrors([
-                'email' => 'Email reset tidak bisa dikirim ke alamat ini. Pastikan alamat email tersebut benar-benar bisa menerima email, '
-                    . 'atau masuk dengan Google bila akun ini terhubung dengan Google.',
-            ]);
+        try {
+            $status = Password::sendResetLink(['email' => $email]);
+        } catch (TransportExceptionInterface $e) {
+            // Contoh 16-10-2026: "550 No Such User Here" untuk alamat
+            // yang kotak suratnya tidak ada.
+            report($e);
+            $status = 'undeliverable';
         }
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                            ->withErrors(['email' => __($status)]);
+        $result = match ($status) {
+            Password::RESET_LINK_SENT => 'sent',
+            Password::INVALID_USER => 'unknown',
+            'undeliverable' => 'undeliverable',
+            default => null,
+        };
+
+        if ($result === null) {
+            // Mis. terlalu sering meminta (throttle): tetap di formulir.
+            return back()->withInput(['email' => $email])->withErrors(['email' => __($status)]);
+        }
+
+        return redirect()->route('password.result')->with('reset_result', ['state' => $result, 'email' => $email]);
+    }
+
+    public function result(Request $request): View|RedirectResponse
+    {
+        $result = $request->session()->get('reset_result');
+
+        if (!is_array($result) || !in_array($result['state'] ?? null, self::RESULTS, true)) {
+            return redirect()->route('password.request');
+        }
+
+        // Tetap bisa dimuat ulang selama sesi ini.
+        $request->session()->keep('reset_result');
+
+        return view('auth.forgot-password-result', [
+            'state' => $result['state'],
+            'email' => $result['email'],
+            'google' => GoogleOAuth::enabled(),
+        ]);
     }
 }

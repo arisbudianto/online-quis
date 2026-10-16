@@ -64,6 +64,26 @@ class User extends Authenticatable implements MustVerifyEmail
         return \App\Support\Angkatan::apply($query, $angkatan, $query->getModel()->qualifyColumn('nim'));
     }
 
+    /**
+     * Kirim email verifikasi tanpa membuat halaman error 500 bila server
+     * email menolak alamat (mis. "550 No Such User Here"). Kegagalan dicatat
+     * di log dan ditampilkan di halaman verifikasi.
+     */
+    public function sendEmailVerificationNotification(): bool
+    {
+        try {
+            $this->notify(new \Illuminate\Auth\Notifications\VerifyEmail);
+
+            return true;
+        } catch (\Symfony\Component\Mailer\Exception\TransportExceptionInterface $e) {
+            report($e);
+            session()->flash('mail_error', "Email verifikasi tidak bisa dikirim ke {$this->email}. "
+                . 'Pastikan alamatnya aktif, ganti email di profil, atau gunakan Verifikasi dengan Google.');
+
+            return false;
+        }
+    }
+
     /** Dosen/guru yang dipilih siswa ini. */
     public function teachers()
     {

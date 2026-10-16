@@ -9,6 +9,12 @@
             kami kirim ke email Anda. Belum menerima emailnya? Kami akan kirim ulang.
         </p>
 
+        @if (session('mail_error'))
+            <div class="mt-4 rounded-none border px-4 py-3 text-sm font-medium" style="border-color:#fecaca;background:#fef2f2;color:#b91c1c;">
+                {{ session('mail_error') }}
+            </div>
+        @endif
+
         @if (session('status') == 'verification-link-sent')
             <div class="mt-4 rounded-none border border-green-200 bg-green-50 px-4 py-3 text-sm font-medium text-green-700">
                 Link verifikasi baru sudah dikirim ke email yang Anda daftarkan.

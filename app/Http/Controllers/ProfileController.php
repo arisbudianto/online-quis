@@ -79,7 +79,10 @@ class ProfileController extends Controller
         $user->save();
 
         if ($emailChanged && $user instanceof MustVerifyEmail) {
-            $user->sendEmailVerificationNotification();
+            if (!$user->sendEmailVerificationNotification()) {
+                return Redirect::route('profile.edit')->with('status', 'Email berhasil diubah menjadi ' . $user->email
+                    . ', tetapi email verifikasi tidak bisa dikirim ke alamat itu. Periksa kembali alamatnya atau gunakan Verifikasi dengan Google.');
+            }
 
             return Redirect::route('profile.edit')->with('status', 'Email berhasil diubah menjadi ' . $user->email . '. Kami sudah mengirim link verifikasi baru ke email tersebut -- silakan cek & klik link itu untuk mengaktifkan kembali akun Anda.');
         }
