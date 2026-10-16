@@ -19,6 +19,27 @@
         gap: 40px 60px; padding: 20px; transform: rotate(-25deg) scale(1.3); opacity: 0.08;
     }
     #exam-watermark span { font-size: 14px; font-weight: 600; color: #000; white-space: nowrap; }
+
+    /* Pembatasan salin selama kuis: teks soal & opsi tidak bisa diseleksi,
+       menu tekan-lama di HP dimatikan. Kolom jawaban tetap normal. */
+    body.exam-protected {
+        -webkit-user-select: none; user-select: none;
+        -webkit-touch-callout: none;
+    }
+    body.exam-protected .answer-text {
+        -webkit-user-select: text; user-select: text;
+        -webkit-touch-callout: default;
+    }
+    #exam-guard-toast {
+        position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+        z-index: 10000; background: #212529; color: #fff; padding: 8px 14px;
+        border-radius: 6px; font-size: 14px; opacity: 0; transition: opacity .2s;
+        pointer-events: none;
+    }
+    #exam-guard-toast.show { opacity: .92; }
+    @media print {
+        body.exam-protected * { display: none !important; }
+    }
     .question-image { max-width: 100%; max-height: 350px; margin-bottom: 12px; border: 1px solid #dee2e6; border-radius: 4px; }
 
     /* Opsi jawaban -- seluruh kotak bisa diklik, bukan cuma bulatan radio kecil */
@@ -178,6 +199,66 @@
         const seconds = Math.floor((remaining % 60000) / 1000);
         timerEl.textContent = String(minutes).padStart(2, '0') + ':' + String(seconds).padStart(2, '0');
     }, 1000);
+
+    // ---- Pembatasan klik kanan & salin selama kuis ----
+    // Ini penghalang di sisi browser, bukan pengaman mutlak: mahasiswa
+    // tetap bisa memotret layar. Kolom jawaban (.answer-text) dikecualikan
+    // supaya mahasiswa tetap bisa menyunting jawabannya sendiri.
+    (function () {
+        document.body.classList.add('exam-protected');
+
+        const toast = document.createElement('div');
+        toast.id = 'exam-guard-toast';
+        document.body.appendChild(toast);
+        let toastTimer;
+        function notify(message) {
+            toast.textContent = message;
+            toast.classList.add('show');
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.remove('show'), 1800);
+        }
+
+        const inAnswerField = (el) => !!(el && el.closest && el.closest('.answer-text'));
+
+        document.addEventListener('contextmenu', function (e) {
+            if (inAnswerField(e.target)) return;
+            e.preventDefault();
+            notify('Klik kanan dinonaktifkan selama kuis.');
+        });
+
+        ['copy', 'cut'].forEach(type => {
+            document.addEventListener(type, function (e) {
+                if (inAnswerField(e.target)) return;
+                e.preventDefault();
+                notify('Menyalin teks soal dinonaktifkan selama kuis.');
+            });
+        });
+
+        document.addEventListener('dragstart', function (e) {
+            if (inAnswerField(e.target)) return;
+            e.preventDefault();
+        });
+
+        document.addEventListener('keydown', function (e) {
+            const key = (e.key || '').toLowerCase();
+            const mod = e.ctrlKey || e.metaKey;
+
+            // Selalu diblokir: lihat sumber, simpan, cetak, alat pengembang.
+            const alwaysBlocked =
+                (mod && ['u', 's', 'p'].includes(key)) ||
+                key === 'f12' ||
+                (mod && e.shiftKey && ['i', 'j', 'c'].includes(key));
+
+            // Salin/potong/pilih semua: diblokir kecuali di kolom jawaban.
+            const copyBlocked = mod && !e.shiftKey && ['c', 'x', 'a'].includes(key) && !inAnswerField(e.target);
+
+            if (alwaysBlocked || copyBlocked) {
+                e.preventDefault();
+                e.stopPropagation();
+                notify('Pintasan ini dinonaktifkan selama kuis.');
+            }
+        }, true);
+    })();
 
     // Deteksi keluar tab
     const tabSwitchUrl = "{{ route('mahasiswa.quizzes.tabSwitch', $attempt) }}";
