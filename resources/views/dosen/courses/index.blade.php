@@ -36,6 +36,7 @@
                         <td>{{ $course->bank_questions_count }}</td>
                         <td class="d-flex gap-2">
                             <a href="{{ route('dosen.bank.index', $course) }}" class="btn btn-sm btn-outline-primary">📚 Bank Soal</a>
+                            <a href="{{ route('dosen.enrollments.index', $course) }}" class="btn btn-sm btn-outline-success">👥 Peserta</a>
                             <form method="POST" action="{{ route('dosen.courses.destroy', $course) }}" onsubmit="return confirm('Hapus mata kuliah ini?')">
                                 @csrf @method('DELETE')
                                 <button class="btn btn-sm btn-outline-danger">Hapus</button>

@@ -48,10 +48,29 @@
         Belum ada kuis {{ $course->name }} di periode {{ $period->label }}.
         Pastikan kuis sudah dikaitkan ke mata kuliah dan periode ini di Pengaturan Kuis.
     </div>
+@elseif ($recap['enrolledCount'] === 0)
+    <div class="alert alert-warning">
+        Belum ada peserta resmi {{ $course->name }} di periode {{ $period->label }}.
+        <a href="{{ route('dosen.enrollments.index', [$course, 'periode' => $period->id]) }}">Tambahkan peserta</a>
+        supaya rekap bisa disusun.
+        @if ($recap['unenrolled']->isNotEmpty())
+            Sudah ada {{ $recap['unenrolled']->count() }} mahasiswa yang mengerjakan kuis mata kuliah ini.
+        @endif
+    </div>
 @else
+    @if ($recap['unenrolled']->isNotEmpty())
+        <div class="alert alert-warning small">
+            {{ $recap['unenrolled']->count() }} mahasiswa mengerjakan kuis mata kuliah ini tetapi tidak terdaftar sebagai peserta,
+            sehingga tidak masuk rekap:
+            {{ $recap['unenrolled']->take(10)->map(fn ($u) => $u->nim . ' ' . $u->name)->implode(', ') }}{{ $recap['unenrolled']->count() > 10 ? ', ...' : '' }}.
+            <a href="{{ route('dosen.enrollments.index', [$course, 'periode' => $period->id]) }}">Kelola peserta</a>
+        </div>
+    @endif
+
     <div class="d-flex justify-content-between align-items-center mb-2">
         <div class="text-muted small">
-            {{ $course->name }} · {{ $period->label }} · {{ $recap['quizzes']->count() }} kuis · {{ $recap['rows']->count() }} mahasiswa
+            {{ $course->name }} · {{ $period->label }} · {{ $recap['quizzes']->count() }} kuis · {{ $recap['rows']->count() }} peserta
+            · <a href="{{ route('dosen.enrollments.index', [$course, 'periode' => $period->id]) }}">kelola peserta</a>
         </div>
         <a href="{{ route('dosen.recap.export', ['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas]) }}"
            class="btn btn-sm btn-success">Export Excel</a>
@@ -101,7 +120,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ 5 + $recap['quizzes']->count() }}" class="text-center text-muted">Belum ada mahasiswa yang mengerjakan.</td></tr>
+                    <tr><td colspan="{{ 5 + $recap['quizzes']->count() }}" class="text-center text-muted">Tidak ada peserta di kelas ini.</td></tr>
                 @endforelse
             </tbody>
         </table>

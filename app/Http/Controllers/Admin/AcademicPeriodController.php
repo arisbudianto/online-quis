@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AcademicPeriod;
+use App\Models\CourseEnrollment;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -54,8 +55,8 @@ class AcademicPeriodController extends Controller
 
     public function destroy(AcademicPeriod $period)
     {
-        if ($period->quizzes()->exists()) {
-            return back()->withErrors(['period' => "Periode {$period->label} sudah dipakai kuis, tidak bisa dihapus."]);
+        if ($period->quizzes()->exists() || CourseEnrollment::where('academic_period_id', $period->id)->exists()) {
+            return back()->withErrors(['period' => "Periode {$period->label} sudah dipakai kuis atau daftar peserta, tidak bisa dihapus."]);
         }
 
         $period->delete();

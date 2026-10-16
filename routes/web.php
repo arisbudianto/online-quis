@@ -14,6 +14,7 @@ use App\Http\Controllers\Dosen\QuizAnalyticsController;
 use App\Http\Controllers\Dosen\ManualQuestionController;
 use App\Http\Controllers\Dosen\EssayGradingController;
 use App\Http\Controllers\Dosen\SemesterRecapController;
+use App\Http\Controllers\Dosen\CourseEnrollmentController;
 use App\Http\Controllers\Mahasiswa\HistoryController;
 use App\Http\Controllers\Mahasiswa\QuizController as MahasiswaQuizController;
 use App\Http\Controllers\Mahasiswa\QuizJoinController;
@@ -61,6 +62,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Rekap nilai per mata kuliah per periode
         Route::get('rekap', [SemesterRecapController::class, 'index'])->name('recap.index');
         Route::get('rekap/export', [SemesterRecapController::class, 'export'])->name('recap.export');
+        // Peserta resmi mata kuliah per periode
+        Route::get('mata-kuliah/{course}/peserta', [CourseEnrollmentController::class, 'index'])->name('enrollments.index');
+        Route::post('mata-kuliah/{course}/peserta/nim', [CourseEnrollmentController::class, 'storeNims'])->name('enrollments.storeNims');
+        Route::post('mata-kuliah/{course}/peserta/kelas', [CourseEnrollmentController::class, 'storeKelas'])->name('enrollments.storeKelas');
+        Route::delete('mata-kuliah/{course}/peserta/{enrollment}', [CourseEnrollmentController::class, 'destroy'])->name('enrollments.destroy');
         Route::post('quizzes/{quiz}/import', [QuestionImportController::class, 'store'])->name('quizzes.import');
         Route::get('quizzes/{quiz}/scores', [ScoreController::class, 'index'])->name('quizzes.scores');
         Route::get('quizzes/{quiz}/scores/export', [ScoreController::class, 'export'])->name('quizzes.scores.export');

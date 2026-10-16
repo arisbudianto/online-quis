@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\AcademicPeriod;
 use App\Models\Attempt;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\GradeScale;
 use App\Models\Quiz;
 use App\Models\User;
@@ -13,15 +14,19 @@ use Illuminate\Support\Collection;
 /**
  * Rekap nilai satu mata kuliah dalam satu periode akademik untuk satu dosen.
  *
- * Aturan (default sementara, menunggu keputusan D2 sampai D5 di
- * claude/rencana-periode-dan-rekap-nilai.md):
+ * Aturan (keputusan pemilik aplikasi 16-10-2026, kecuali yang ditandai):
  * - Kuis yang dihitung: milik dosen ini, course & periode yang dipilih.
- * - Peserta: mahasiswa dengan minimal satu attempt submitted di kuis tsb.
- * - Nilai per kuis: skor tertinggi dari attempt submitted yang sudah final.
+ * - Peserta: daftar peserta resmi (course_enrollments) untuk course+periode.
+ *   Mahasiswa yang mengerjakan tapi tidak terdaftar dilaporkan terpisah
+ *   di 'unenrolled', tidak masuk rekap.
+ * - Nilai per kuis: skor tertinggi dari attempt submitted yang sudah final
+ *   (default sementara, belum dikonfirmasi).
  * - Ada attempt submitted yang masih menunggu nilai esai dan belum ada
- *   attempt final lain => sel "pending", nilai akhir mahasiswa belum final.
- * - Tidak mengerjakan => sel "none", dihitung 0 di nilai akhir.
- * - Nilai akhir = rata-rata sama rata semua kuis, 2 desimal.
+ *   attempt final lain => sel "pending", nilai akhir belum final, tanpa huruf.
+ * - Tidak mengerjakan => sel "none", dihitung MISSING_SCORE (default 0,
+ *   belum dikonfirmasi).
+ * - Nilai akhir = rata-rata sama rata semua kuis, 2 desimal, lalu
+ *   dikonversi ke huruf lewat GradeScale.
  */
 class SemesterGradeService
 {
@@ -35,8 +40,10 @@ class SemesterGradeService
     /**
      * @return array{
      *   quizzes: Collection<int, Quiz>,
-     *   rows: Collection<int, array{student: User, cells: array<int, array{status: string, score: ?float, attempts: int}>, final: ?float, complete: bool}>,
-     *   kelasOptions: array<int, string>
+     *   rows: Collection<int, array{student: User, cells: array, final: ?float, letter: ?string, weight: ?float, complete: bool}>,
+     *   kelasOptions: array<int, string>,
+     *   enrolledCount: int,
+     *   unenrolled: Collection<int, User>
      * }
      */
     public function build(User $dosen, Course $course, AcademicPeriod $period, ?string $kelas = null): array
@@ -49,53 +56,65 @@ class SemesterGradeService
             ->orderBy('id')
             ->get(['id', 'title', 'start_time']);
 
-        if ($quizzes->isEmpty()) {
-            return ['quizzes' => $quizzes, 'rows' => collect(), 'kelasOptions' => []];
-        }
+        $students = User::whereIn('id', CourseEnrollment::where('course_id', $course->id)
+                ->where('academic_period_id', $period->id)
+                ->select('user_id'))
+            ->get(['id', 'name', 'nim', 'kelas']);
 
-        $attempts = Attempt::whereIn('quiz_id', $quizzes->pluck('id'))
-            ->where('status', 'submitted')
-            ->with('user:id,name,nim,kelas')
-            ->get(['id', 'quiz_id', 'user_id', 'score', 'needs_grading']);
+        $kelasOptions = $students->pluck('kelas')->filter()->unique()->sort()->values()->all();
+
+        $attempts = $quizzes->isEmpty()
+            ? collect()
+            : Attempt::whereIn('quiz_id', $quizzes->pluck('id'))
+                ->where('status', 'submitted')
+                ->get(['id', 'quiz_id', 'user_id', 'score', 'needs_grading']);
 
         $byUser = $attempts->groupBy('user_id');
 
-        $kelasOptions = $byUser->map(fn ($a) => $a->first()->user->kelas)
-            ->filter()->unique()->sort()->values()->all();
+        $enrolledIds = $students->pluck('id')->flip();
+        $unenrolled = User::whereIn('id', $byUser->keys()->reject(fn ($id) => $enrolledIds->has($id))->values())
+            ->orderBy('kelas')->orderBy('nim')
+            ->get(['id', 'name', 'nim', 'kelas']);
 
         $scales = GradeScale::ordered();
 
-        $rows = $byUser->map(function (Collection $userAttempts) use ($quizzes, $scales) {
-            $student = $userAttempts->first()->user;
-            $byQuiz = $userAttempts->groupBy('quiz_id');
+        $rows = $students
+            ->when($kelas !== null && $kelas !== '', fn ($c) => $c->filter(fn ($s) => $s->kelas === $kelas))
+            ->map(function (User $student) use ($quizzes, $scales, $byUser) {
+                $byQuiz = $byUser->get($student->id, collect())->groupBy('quiz_id');
 
-            $cells = [];
-            foreach ($quizzes as $quiz) {
-                $cells[$quiz->id] = $this->cell($byQuiz->get($quiz->id, collect()));
-            }
+                $cells = [];
+                foreach ($quizzes as $quiz) {
+                    $cells[$quiz->id] = $this->cell($byQuiz->get($quiz->id, collect()));
+                }
 
-            $complete = collect($cells)->every(fn ($c) => $c['status'] !== self::CELL_PENDING);
+                $complete = collect($cells)->every(fn ($c) => $c['status'] !== self::CELL_PENDING);
 
-            $final = $complete
-                ? round(collect($cells)->avg(fn ($c) => $c['score'] ?? self::MISSING_SCORE), 2)
-                : null;
+                $final = ($complete && $quizzes->isNotEmpty())
+                    ? round(collect($cells)->avg(fn ($c) => $c['score'] ?? self::MISSING_SCORE), 2)
+                    : null;
 
-            $grade = $final !== null ? GradeScale::resolve($final, $scales) : null;
+                $grade = $final !== null ? GradeScale::resolve($final, $scales) : null;
 
-            return [
-                'student' => $student,
-                'cells' => $cells,
-                'final' => $final,
-                'letter' => $grade?->letter,
-                'weight' => $grade?->weight,
-                'complete' => $complete,
-            ];
-        })
-            ->when($kelas !== null && $kelas !== '', fn ($c) => $c->filter(fn ($r) => $r['student']->kelas === $kelas))
+                return [
+                    'student' => $student,
+                    'cells' => $cells,
+                    'final' => $final,
+                    'letter' => $grade?->letter,
+                    'weight' => $grade?->weight,
+                    'complete' => $complete,
+                ];
+            })
             ->sortBy(fn ($r) => [$r['student']->kelas ?? '', $r['student']->nim ?? '', $r['student']->name])
             ->values();
 
-        return ['quizzes' => $quizzes, 'rows' => $rows, 'kelasOptions' => $kelasOptions];
+        return [
+            'quizzes' => $quizzes,
+            'rows' => $rows,
+            'kelasOptions' => $kelasOptions,
+            'enrolledCount' => $students->count(),
+            'unenrolled' => $unenrolled,
+        ];
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Exports\SemesterRecapExport;
 use App\Models\AcademicPeriod;
 use App\Models\Attempt;
 use App\Models\Course;
+use App\Models\CourseEnrollment;
 use App\Models\Quiz;
 use App\Models\User;
 use App\Services\SemesterGradeService;
@@ -42,9 +43,73 @@ class SemesterRecapTest extends TestCase
         ], $attrs));
     }
 
-    private function student(string $nim, string $kelas = 'A'): User
+    /** Mahasiswa baru, otomatis didaftarkan sebagai peserta resmi kecuali $enroll = false. */
+    private function student(string $nim, string $kelas = 'A', bool $enroll = true): User
     {
-        return User::factory()->create(['role' => 'mahasiswa', 'nim' => $nim, 'kelas' => $kelas, 'name' => 'Mhs ' . $nim]);
+        $user = User::factory()->create(['role' => 'mahasiswa', 'nim' => $nim, 'kelas' => $kelas, 'name' => 'Mhs ' . $nim]);
+
+        if ($enroll) {
+            CourseEnrollment::create([
+                'course_id' => $this->course->id,
+                'academic_period_id' => $this->period->id,
+                'user_id' => $user->id,
+            ]);
+        }
+
+        return $user;
+    }
+
+    public function test_enrolled_student_without_any_attempt_gets_zero_and_e(): void
+    {
+        $q = $this->quiz();
+        $this->attempt($q, $this->student('K3526070'), 90);
+        $this->student('K3526071');   // terdaftar, tidak mengerjakan apa pun
+
+        $rows = $this->build()['rows']->keyBy(fn ($r) => $r['student']->nim);
+
+        $this->assertSame(0.0, $rows['K3526071']['final']);
+        $this->assertSame('E', $rows['K3526071']['letter']);
+        $this->assertSame('A', $rows['K3526070']['letter']);
+    }
+
+    public function test_unenrolled_student_is_reported_but_not_in_rows(): void
+    {
+        $q = $this->quiz();
+        $this->attempt($q, $this->student('K3526080'), 70);
+        $outsider = $this->student('K3526081', 'B', false);
+        $this->attempt($q, $outsider, 95);
+
+        $recap = $this->build();
+
+        $this->assertSame(['K3526080'], $recap['rows']->pluck('student.nim')->all());
+        $this->assertSame(1, $recap['enrolledCount']);
+        $this->assertSame(['K3526081'], $recap['unenrolled']->pluck('nim')->all());
+    }
+
+    public function test_enrollment_of_other_period_or_course_does_not_count(): void
+    {
+        $q = $this->quiz();
+        $other = AcademicPeriod::create(['year_start' => 2025, 'semester' => 'genap']);
+        $s = $this->student('K3526090', 'A', false);
+        CourseEnrollment::create(['course_id' => $this->course->id, 'academic_period_id' => $other->id, 'user_id' => $s->id]);
+        $this->attempt($q, $s, 80);
+
+        $recap = $this->build();
+
+        $this->assertSame(0, $recap['enrolledCount']);
+        $this->assertSame(['K3526090'], $recap['unenrolled']->pluck('nim')->all());
+    }
+
+    public function test_page_warns_when_no_participants(): void
+    {
+        $q = $this->quiz();
+        $this->attempt($q, $this->student('K3526095', 'A', false), 80);
+
+        $this->actingAs($this->dosen)
+            ->get(route('dosen.recap.index', ['periode' => $this->period->id, 'mk' => $this->course->id]))
+            ->assertOk()
+            ->assertSee('Belum ada peserta resmi')
+            ->assertSee('Sudah ada 1 mahasiswa');
     }
 
     private function attempt(Quiz $quiz, User $student, ?float $score, string $status = 'submitted', bool $needsGrading = false): Attempt
