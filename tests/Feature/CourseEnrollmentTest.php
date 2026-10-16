@@ -20,14 +20,20 @@ class CourseEnrollmentTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->dosen = User::factory()->create(['role' => 'dosen']);
+        $this->dosen = $this->makeTeacher();
         $this->course = Course::create(['dosen_id' => $this->dosen->id, 'name' => 'Basis Data']);
         $this->period = AcademicPeriod::create(['year_start' => 2026, 'semester' => 'ganjil', 'is_active' => true]);
     }
 
-    private function mhs(string $nim, string $kelas = 'A'): User
+    /** Siswa yang memilih dosen ini (kecuali $mine = false). */
+    private function mhs(string $nim, string $kelas = 'A', bool $mine = true): User
     {
-        return User::factory()->create(['role' => 'mahasiswa', 'nim' => $nim, 'kelas' => $kelas, 'name' => 'Mhs ' . $nim]);
+        $s = User::factory()->create(['role' => 'mahasiswa', 'nim' => $nim, 'kelas' => $kelas, 'name' => 'Mhs ' . $nim]);
+        if ($mine) {
+            $this->linkStudents($this->dosen, $s);
+        }
+
+        return $s;
     }
 
     private function enrolledNims(?AcademicPeriod $period = null): array
@@ -176,7 +182,7 @@ class CourseEnrollmentTest extends TestCase
         $this->mhs('K3526002X', 'B')->update(['role' => 'dosen']);
 
         $this->actingAs($this->dosen)->get(route('dosen.enrollments.index', $this->course))
-            ->assertOk()->assertSee('Daftarkan semua mahasiswa kelas A, B, C')->assertSee('Mahasiswa aplikasi menurut angkatan dan kelas');
+            ->assertOk()->assertSee('Daftarkan semua siswa Anda (kelas A, B, C)')->assertSee('Siswa yang memilih Anda, menurut angkatan dan kelas');
 
         $this->actingAs($this->dosen)
             ->post(route('dosen.enrollments.storeAllKelas', $this->course), ['academic_period_id' => $this->period->id])

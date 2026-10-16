@@ -38,13 +38,13 @@
 <div class="row">
     <div class="col-lg-5">
         <div class="card mb-3 border-success">
-            <div class="card-header">Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}</div>
+            <div class="card-header">Daftarkan semua siswa Anda (kelas {{ $kelasOptions->implode(', ') ?: '-' }})</div>
             <div class="card-body">
                 <table class="table table-sm table-bordered small mb-2">
                     <thead class="table-light">
                         <tr>
                             <th>Angkatan</th>
-                            @foreach (\App\Models\User::KELAS as $k)<th class="text-center">{{ $k }}</th>@endforeach
+                            @foreach ($kelasOptions as $k)<th class="text-center">{{ $k }}</th>@endforeach
                             <th class="text-center">Jumlah</th>
                         </tr>
                     </thead>
@@ -52,20 +52,20 @@
                         @foreach ($angkatanCounts as $a => $perKelas)
                             <tr>
                                 <td>{{ \App\Support\Angkatan::label($a) }}</td>
-                                @foreach (\App\Models\User::KELAS as $k)<td class="text-center">{{ $perKelas[$k] ?? 0 }}</td>@endforeach
+                                @foreach ($kelasOptions as $k)<td class="text-center">{{ $perKelas[$k] ?? 0 }}</td>@endforeach
                                 <td class="text-center fw-semibold">{{ array_sum($perKelas) }}</td>
                             </tr>
                         @endforeach
                         <tr class="table-light">
                             <td>Semua</td>
-                            @foreach (\App\Models\User::KELAS as $k)<td class="text-center">{{ $kelasCounts[$k] ?? 0 }}</td>@endforeach
+                            @foreach ($kelasOptions as $k)<td class="text-center">{{ $kelasCounts[$k] ?? 0 }}</td>@endforeach
                             <td class="text-center fw-semibold">{{ $kelasCounts->sum() }}</td>
                         </tr>
                     </tbody>
                 </table>
-                <p class="small text-muted mb-2">Mahasiswa aplikasi menurut angkatan dan kelas. Yang sudah terdaftar dilewati.</p>
+                <p class="small text-muted mb-2">Siswa yang memilih Anda, menurut angkatan dan kelas. Yang sudah terdaftar dilewati.</p>
                 <form method="POST" action="{{ route('dosen.enrollments.storeAllKelas', $course) }}" class="row g-2 align-items-end"
-                      onsubmit="var s=this.angkatan; return confirm('Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}' + (s.value ? ' angkatan ' + s.options[s.selectedIndex].text : ' dari semua angkatan') + ' ke {{ addslashes($course->name) }} ({{ $period->label }})?')">
+                      onsubmit="var s=this.angkatan; return confirm('Daftarkan semua siswa Anda kelas {{ addslashes($kelasOptions->implode(', ')) }}' + (s.value ? ' angkatan ' + s.options[s.selectedIndex].text : ' dari semua angkatan') + ' ke {{ addslashes($course->name) }} ({{ $period->label }})?')">
                     @csrf
                     <input type="hidden" name="academic_period_id" value="{{ $period->id }}">
                     <div class="col-7">

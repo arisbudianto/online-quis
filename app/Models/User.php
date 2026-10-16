@@ -25,7 +25,12 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, MustVerifyEmailTrait;
 
-    /** Kelas yang berlaku di prodi (keputusan pemilik aplikasi, 16-10-2026). */
+    /**
+     * Kelas bawaan prodi asal (keputusan pemilik aplikasi, 16-10-2026).
+     * Sejak pendaftaran mandiri dosen/guru, daftar kelas yang berlaku diambil
+     * dari teacher_classes milik masing-masing dosen; konstanta ini hanya
+     * dipakai sebagai nilai awal dosen lama.
+     */
     public const KELAS = ['A', 'B', 'C'];
 
     protected $fillable = [
@@ -35,6 +40,7 @@ class User extends Authenticatable implements MustVerifyEmail
         'email',
         'password',
         'role',
+        'institution',
     ];
 
     protected $hidden = [
@@ -44,6 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'approved_at' => 'datetime',
     ];
 
     /** Tahun angkatan dari awalan NIM, null bila tidak dikenali. */
@@ -55,6 +62,88 @@ class User extends Authenticatable implements MustVerifyEmail
     public function scopeAngkatan($query, ?string $angkatan)
     {
         return \App\Support\Angkatan::apply($query, $angkatan, $query->getModel()->qualifyColumn('nim'));
+    }
+
+    /** Dosen/guru yang dipilih siswa ini. */
+    public function teachers()
+    {
+        return $this->belongsToMany(User::class, 'student_teacher', 'student_id', 'teacher_id')->withTimestamps();
+    }
+
+    /** Siswa yang memilih dosen ini. */
+    public function students()
+    {
+        return $this->belongsToMany(User::class, 'student_teacher', 'teacher_id', 'student_id')->withTimestamps();
+    }
+
+    public function teacherClasses()
+    {
+        return $this->hasMany(TeacherClass::class, 'teacher_id');
+    }
+
+    /** Dosen yang mendaftar sendiri baru aktif setelah disetujui admin. */
+    public function isPendingApproval(): bool
+    {
+        return $this->role === 'dosen' && $this->approved_at === null;
+    }
+
+    public function scopeApprovedTeachers($query)
+    {
+        return $query->where('role', 'dosen')->whereNotNull('approved_at');
+    }
+
+    /**
+     * Daftar kelas yang berlaku untuk pengguna ini:
+     * - dosen: kelas miliknya sendiri;
+     * - admin: gabungan kelas semua dosen;
+     * - siswa: gabungan kelas dosen-dosen yang dipilihnya.
+     *
+     * @return array<int, string>
+     */
+    public function kelasOptions(): array
+    {
+        $query = TeacherClass::query();
+
+        if ($this->role === 'dosen') {
+            $query->where('teacher_id', $this->id);
+        } elseif ($this->role === 'mahasiswa') {
+            $query->whereIn('teacher_id', $this->teachers()->select('users.id'));
+        }
+
+        return $query->distinct()->orderBy('name')->pluck('name')->all();
+    }
+
+    /** Gabungan kelas dari beberapa dosen. @param array<int, int> $teacherIds */
+    public static function kelasOptionsFor(array $teacherIds): array
+    {
+        return TeacherClass::whereIn('teacher_id', $teacherIds)->distinct()->orderBy('name')->pluck('name')->all();
+    }
+
+    /**
+     * Mahasiswa yang boleh dilihat dan dikelola $viewer:
+     * admin melihat semua, dosen hanya siswa yang memilihnya.
+     */
+    public function scopeVisibleTo($query, User $viewer)
+    {
+        $query->where('role', 'mahasiswa');
+
+        if ($viewer->role !== 'admin') {
+            // Relasi ke tabel users sendiri: Laravel memberi alias pada tabel
+            // users di subquery, jadi saring lewat kolom pivot.
+            $query->whereHas('teachers', fn ($q) => $q->where('student_teacher.teacher_id', $viewer->id));
+        }
+
+        return $query;
+    }
+
+    public function canManageStudent(User $student): bool
+    {
+        if ($student->role !== 'mahasiswa') {
+            return false;
+        }
+
+        return $this->role === 'admin'
+            || ($this->role === 'dosen' && $student->teachers()->where('users.id', $this->id)->exists());
     }
 
     public function isDosen(): bool

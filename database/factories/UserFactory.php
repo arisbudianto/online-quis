@@ -27,9 +27,20 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
+            // Dosen buatan factory dianggap sudah disetujui admin.
+            'approved_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
         ];
+    }
+
+    /** Dosen/guru yang baru mendaftar dan belum disetujui admin. */
+    public function pendingApproval(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'role' => 'dosen',
+            'approved_at' => null,
+        ]);
     }
 
     /**

@@ -27,7 +27,11 @@ class RegistrationTest extends TestCase
      */
     public function test_new_users_can_register(): void
     {
+        $teacher = $this->makeTeacher();
+
         $response = $this->post('/register', [
+            'role' => 'mahasiswa',
+            'teachers' => [$teacher->id],
             'name' => 'Test User',
             'nim' => '2024999999',
             'kelas' => 'A',
@@ -45,18 +49,20 @@ class RegistrationTest extends TestCase
             'kelas' => 'A',
             'role' => 'mahasiswa',
         ]);
+        $this->assertSame([$teacher->id], \App\Models\User::where('email', 'test@example.com')->first()->teachers->pluck('id')->all());
     }
 
     public function test_registration_fails_without_required_student_fields(): void
     {
         $response = $this->post('/register', [
+            'role' => 'mahasiswa',
             'name' => 'Test User Tanpa NIM',
             'email' => 'tanpa-nim@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
         ]);
 
-        $response->assertSessionHasErrors(['nim', 'kelas']);
+        $response->assertSessionHasErrors(['nim', 'teachers']);
         $this->assertGuest();
     }
 }

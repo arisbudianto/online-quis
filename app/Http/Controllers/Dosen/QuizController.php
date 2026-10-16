@@ -119,7 +119,7 @@ class QuizController extends Controller
             'is_published' => ['nullable', 'boolean'],
             'is_public' => ['nullable', 'boolean'],
             'target_kelas' => ['nullable', 'array'],
-            'target_kelas.*' => [Rule::in(User::KELAS)],
+            'target_kelas.*' => [Rule::in($request->user()->kelasOptions())],
             'notify_students' => ['nullable', 'boolean'],
             'notify_email' => ['nullable', 'boolean'],
         ]);

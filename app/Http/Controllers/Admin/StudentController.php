@@ -14,7 +14,11 @@ class StudentController extends Controller
         $angkatan = \App\Support\Angkatan::isValid($angkatan) ? $angkatan : null;
         $kelas    = $request->query('kelas');
 
+        $kelasOptions = User::where('role', 'mahasiswa')->whereNotNull('kelas')
+            ->distinct()->orderBy('kelas')->pluck('kelas')->all();
+
         $students = User::where('role', 'mahasiswa')
+            ->with('teachers:id,name')
             ->angkatan($angkatan)
             ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
             ->orderBy('kelas')
@@ -22,6 +26,6 @@ class StudentController extends Controller
             ->paginate(20)
             ->withQueryString();
 
-        return view('admin.students.index', compact('students', 'angkatan', 'kelas'));
+        return view('admin.students.index', compact('students', 'angkatan', 'kelas', 'kelasOptions'));
     }
 }

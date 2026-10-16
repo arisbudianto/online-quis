@@ -17,6 +17,9 @@ class QuizController extends Controller
     public function index(Request $request)
     {
         $quizzes = Quiz::where('is_published', true)
+            // Daftar kuis hanya dari dosen/guru yang dipilih siswa. Kuis dosen
+            // lain tetap bisa dikerjakan lewat kode kuis.
+            ->whereIn('dosen_id', $request->user()->teachers()->select('users.id'))
             ->withCount('questions')
             // Kuis privat (is_public = false) sengaja TIDAK ikut di sini --
             // hanya bisa diakses lewat "Masukkan Kode Kuis" / scan QR.

@@ -27,4 +27,23 @@ abstract class TestCase extends BaseTestCase
 
         $this->withCookie(config('session.cookie'), $sessionId);
     }
+
+    /** Dosen yang sudah disetujui dengan daftar kelasnya sendiri. */
+    protected function makeTeacher(array $classes = ['A', 'B', 'C'], array $attrs = []): \App\Models\User
+    {
+        $teacher = \App\Models\User::factory()->create(array_merge(['role' => 'dosen'], $attrs));
+        foreach ($classes as $c) {
+            $teacher->teacherClasses()->create(['name' => $c]);
+        }
+
+        return $teacher;
+    }
+
+    /** Hubungkan siswa ke dosen (seperti siswa memilih dosen saat daftar). */
+    protected function linkStudents(\App\Models\User $teacher, \App\Models\User ...$students): void
+    {
+        foreach ($students as $s) {
+            $s->teachers()->syncWithoutDetaching([$teacher->id]);
+        }
+    }
 }

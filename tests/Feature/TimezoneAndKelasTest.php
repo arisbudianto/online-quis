@@ -86,13 +86,15 @@ class TimezoneAndKelasTest extends TestCase
         $this->assertSame('2026-10-13 00:00:00', DB::table('quizzes')->where('id', $quizId)->value('start_time'));
     }
 
-    public function test_registration_offers_only_a_b_c_and_rejects_d(): void
+    public function test_registration_offers_only_teacher_classes_and_rejects_d(): void
     {
+        $teacher = $this->makeTeacher();
+
         $this->get('/register')->assertOk()
-            ->assertSee('<option value="C"', false)
-            ->assertDontSee('<option value="D"', false);
+            ->assertSee('data-classes=\'["A","B","C"]\'', false);
 
         $this->post('/register', [
+            'role' => 'mahasiswa', 'teachers' => [$teacher->id],
             'name' => 'Mhs D', 'nim' => 'K3526999', 'kelas' => 'D', 'email' => 'd@contoh.test',
             'password' => 'rahasia123', 'password_confirmation' => 'rahasia123',
         ])->assertSessionHasErrors('kelas');
@@ -102,8 +104,9 @@ class TimezoneAndKelasTest extends TestCase
 
     public function test_dosen_cannot_set_unknown_kelas_on_student(): void
     {
-        $dosen = User::factory()->create(['role' => 'dosen']);
+        $dosen = $this->makeTeacher();
         $mhs = User::factory()->create(['role' => 'mahasiswa', 'nim' => 'K3526010', 'kelas' => 'A']);
+        $this->linkStudents($dosen, $mhs);
 
         $this->actingAs($dosen)->put(route('dosen.students.update', $mhs), [
             'name' => $mhs->name, 'nim' => $mhs->nim, 'kelas' => 'TI-3A', 'email' => $mhs->email,

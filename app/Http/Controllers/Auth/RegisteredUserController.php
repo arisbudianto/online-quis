@@ -6,6 +6,7 @@ use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountCredentialsNotification;
+use App\Support\RoleRegistration;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,30 +28,22 @@ class RegisteredUserController extends Controller
     /**
      * Handle an incoming registration request.
      *
-     * Catatan: registrasi publik ini khusus untuk MAHASISWA.
-     * Akun dosen dibuat manual oleh admin (lewat tinker/seeder), bukan lewat form ini,
-     * supaya tidak sembarang orang bisa mendaftar sebagai dosen.
+     * Sejak 16-10-2026 pendaftar memilih peran: mahasiswa/siswa (memilih
+     * dosen/guru dan kelas) atau dosen/guru. Dosen/guru yang mendaftar sendiri
+     * baru bisa memakai menu dosen setelah disetujui admin.
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'nim' => ['required', 'string', 'max:50', 'unique:'.User::class],
-            'kelas' => ['required', 'string', Rule::in(User::KELAS)],
+        // Peran mahasiswa/siswa atau dosen/guru. Dosen/guru menunggu
+        // persetujuan admin (lihat RoleMiddleware).
+        $data = RoleRegistration::validate($request->all(), [
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $plainPassword = $request->password;
 
-        $user = User::create([
-            'name' => $request->name,
-            'nim' => $request->nim,
-            'kelas' => $request->kelas,
-            'email' => $request->email,
-            'password' => Hash::make($plainPassword),
-            'role' => 'mahasiswa',
-        ]);
+        $user = RoleRegistration::create($data, $request->email, Hash::make($plainPassword));
 
         event(new Registered($user));
 

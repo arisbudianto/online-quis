@@ -15,12 +15,14 @@ class StudentController extends Controller
      */
     public function update(Request $request, User $student)
     {
-        $this->ensureIsStudent($student);
+        $this->ensureCanManage($request, $student);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'nim' => ['nullable', 'string', 'max:50', Rule::unique('users', 'nim')->ignore($student->id)],
-            'kelas' => ['nullable', Rule::in(User::KELAS)],
+            'kelas' => ['nullable', Rule::in(array_values(array_unique(array_filter(
+                array_merge($request->user()->kelasOptions(), [$student->kelas])
+            ))))],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($student->id)],
         ]);
 
@@ -35,7 +37,7 @@ class StudentController extends Controller
      */
     public function destroy(Request $request, User $student)
     {
-        $this->ensureIsStudent($student);
+        $this->ensureCanManage($request, $student);
 
         $request->validate([
             'confirm_email' => ['required', 'email'],
@@ -48,6 +50,16 @@ class StudentController extends Controller
         }
 
         $name = $student->name;
+        $viewer = $request->user();
+
+        // Siswa yang juga memilih dosen lain tidak dihapus akunnya; cukup
+        // dilepas dari daftar dosen ini.
+        if ($viewer->role === 'dosen' && $student->teachers()->where('users.id', '!=', $viewer->id)->exists()) {
+            $student->teachers()->detach($viewer->id);
+
+            return back()->with('status', "{$name} dikeluarkan dari daftar siswa Anda. Akunnya tetap ada karena juga terdaftar pada dosen/guru lain.");
+        }
+
         $student->delete();
 
         return back()->with('status', "Mahasiswa {$name} berhasil dihapus.");
@@ -59,7 +71,7 @@ class StudentController extends Controller
      */
     public function updatePassword(Request $request, User $student)
     {
-        $this->ensureIsStudent($student);
+        $this->ensureCanManage($request, $student);
 
         $validated = $request->validate([
             'confirm_email' => ['required', 'email'],
@@ -80,12 +92,13 @@ class StudentController extends Controller
     }
 
     /**
-     * Pastikan route ini hanya bisa dipakai untuk akun berrole mahasiswa,
-     * supaya dosen tidak bisa menyunting/menghapus akun dosen/admin lain
-     * lewat route ini.
+     * Hanya akun mahasiswa yang memilih dosen ini (atau admin) yang boleh
+     * disunting, dihapus, atau diubah password-nya.
      */
-    private function ensureIsStudent(User $student): void
+    private function ensureCanManage(Request $request, User $student): void
     {
         abort_unless($student->role === 'mahasiswa', 404);
+        // Dosen hanya mengelola siswa yang memilihnya; admin semua siswa.
+        abort_unless($request->user()->canManageStudent($student), 403, 'Mahasiswa ini bukan siswa Anda.');
     }
 }

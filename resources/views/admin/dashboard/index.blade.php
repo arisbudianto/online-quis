@@ -5,6 +5,13 @@
 <h3>Dashboard Admin</h3>
 <p class="text-muted">Ringkasan sistem &amp; menu administratif.</p>
 
+@if ($stats['dosen_pending'] > 0)
+    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+        <span>{{ $stats['dosen_pending'] }} pendaftaran dosen/guru menunggu persetujuan.</span>
+        <a href="{{ route('admin.lecturers.index') }}" class="btn btn-sm btn-warning">Periksa</a>
+    </div>
+@endif
+
 <div class="row mb-4">
     <div class="col-md-3 mb-3">
         <div class="card text-center h-100">

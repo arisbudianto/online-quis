@@ -34,19 +34,20 @@ class CourseEnrollmentController extends Controller
                 ->values()
             : collect();
 
-        $kelasOptions = collect(User::KELAS);
+        $viewer = $request->user();
+        $kelasOptions = collect($viewer->kelasOptions());
 
-        // Jumlah mahasiswa per angkatan dan kelas resmi, ditampilkan sebelum
-        // dosen menekan "daftarkan semua".
+        // Jumlah siswa milik dosen ini per angkatan dan kelas, ditampilkan
+        // sebelum dosen menekan "daftarkan semua".
         $counts = [];
-        User::where('role', 'mahasiswa')
-            ->whereIn('kelas', User::KELAS)
+        User::visibleTo($viewer)
+            ->whereIn('kelas', $kelasOptions->all())
             ->get(['nim', 'kelas'])
             ->each(function (User $u) use (&$counts) {
                 $a = $u->angkatan ?? Angkatan::LAINNYA;
                 $counts[$a][$u->kelas] = ($counts[$a][$u->kelas] ?? 0) + 1;
             });
-        $kelasCounts = collect(User::KELAS)->mapWithKeys(
+        $kelasCounts = $kelasOptions->mapWithKeys(
             fn ($k) => [$k => collect($counts)->sum(fn ($row) => $row[$k] ?? 0)]
         );
         $angkatanCounts = collect(Angkatan::options())->mapWithKeys(
@@ -71,7 +72,7 @@ class CourseEnrollmentController extends Controller
         $nims = collect(preg_split('/[\s,;]+/', strtoupper($data['nims'])))
             ->map(fn ($n) => trim($n))->filter()->unique()->values();
 
-        $students = User::where('role', 'mahasiswa')
+        $students = User::visibleTo($request->user())
             ->whereIn('nim', $nims)
             ->get(['id', 'nim']);
 
@@ -88,7 +89,8 @@ class CourseEnrollmentController extends Controller
             ->with('status', $status);
 
         if ($notFound->isNotEmpty()) {
-            $redirect->withErrors(['nims' => 'NIM tidak ditemukan sebagai akun mahasiswa: ' . $notFound->implode(', ')]);
+            $redirect->withErrors(['nims' => 'NIM tidak ditemukan di antara siswa Anda: ' . $notFound->implode(', ')
+                . '. Siswa perlu memilih Anda sebagai dosen/guru dari halaman profilnya, atau impor lewat menu Mahasiswa.']);
         }
 
         return $redirect;
@@ -101,11 +103,11 @@ class CourseEnrollmentController extends Controller
 
         $data = $request->validate([
             'academic_period_id' => ['required', 'exists:academic_periods,id'],
-            'kelas' => ['required', Rule::in(User::KELAS)],
+            'kelas' => ['required', Rule::in($request->user()->kelasOptions())],
             'angkatan' => ['nullable', Rule::in(array_keys(Angkatan::options()))],
         ]);
 
-        $ids = $this->studentIds([$data['kelas']], $data['angkatan'] ?? null);
+        $ids = $this->studentIds($request->user(), [$data['kelas']], $data['angkatan'] ?? null);
         $added = $this->enroll($course, (int) $data['academic_period_id'], $ids);
 
         $scope = "kelas {$data['kelas']}" . $this->angkatanText($data['angkatan'] ?? null);
@@ -114,7 +116,7 @@ class CourseEnrollmentController extends Controller
             ->with('status', "{$added} mahasiswa {$scope} ditambahkan dari {$ids->count()} yang cocok.");
     }
 
-    /** Tambah semua mahasiswa kelas A, B, dan C sekaligus, opsional dibatasi angkatan. */
+    /** Tambah semua siswa dosen ini dari seluruh kelasnya sekaligus, opsional dibatasi angkatan. */
     public function storeAllKelas(Request $request, Course $course)
     {
         $this->authorizeCourse($request, $course);
@@ -124,10 +126,11 @@ class CourseEnrollmentController extends Controller
             'angkatan' => ['nullable', Rule::in(array_keys(Angkatan::options()))],
         ]);
 
-        $ids = $this->studentIds(User::KELAS, $data['angkatan'] ?? null);
+        $kelas = $request->user()->kelasOptions();
+        $ids = $this->studentIds($request->user(), $kelas, $data['angkatan'] ?? null);
         $added = $this->enroll($course, (int) $data['academic_period_id'], $ids);
 
-        $scope = 'kelas ' . implode(', ', User::KELAS) . $this->angkatanText($data['angkatan'] ?? null);
+        $scope = 'kelas ' . implode(', ', $kelas) . $this->angkatanText($data['angkatan'] ?? null);
 
         return redirect()->route('dosen.enrollments.index', [$course, 'periode' => $data['academic_period_id']])
             ->with('status', "{$added} mahasiswa {$scope} ditambahkan dari {$ids->count()} yang cocok."
@@ -135,9 +138,9 @@ class CourseEnrollmentController extends Controller
     }
 
     /** @param array<int, string> $kelas */
-    private function studentIds(array $kelas, ?string $angkatan): Collection
+    private function studentIds(User $viewer, array $kelas, ?string $angkatan): Collection
     {
-        return User::where('role', 'mahasiswa')
+        return User::visibleTo($viewer)
             ->whereIn('kelas', $kelas)
             ->angkatan($angkatan)
             ->pluck('id');

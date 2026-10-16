@@ -15,7 +15,7 @@
     @if ($isMahasiswa)
         <div class="row">
             <div class="col-md-6 mb-3">
-                <label class="form-label">NIM</label>
+                <label class="form-label">NIM / NIS</label>
                 <input type="text" name="nim" class="form-control" value="{{ old('nim', $user->nim) }}" required>
                 @error('nim')
                     <div class="text-danger small mt-1">{{ $message }}</div>
@@ -23,9 +23,15 @@
             </div>
             <div class="col-md-6 mb-3">
                 <label class="form-label">Kelas</label>
-                <select name="kelas" class="form-control" required>
-                    <option value="" disabled>Pilih kelas</option>
-                    @foreach (\App\Models\User::KELAS as $opt)
+                @php
+                    $kelasPilihan = $user->kelasOptions();
+                    if ($user->kelas && !in_array($user->kelas, $kelasPilihan, true)) {
+                        $kelasPilihan[] = $user->kelas;
+                    }
+                @endphp
+                <select name="kelas" class="form-control" @if ($kelasPilihan) required @endif>
+                    <option value="" disabled>{{ $kelasPilihan ? 'Pilih kelas' : 'Dosen/guru belum mengatur kelas' }}</option>
+                    @foreach ($kelasPilihan as $opt)
                         <option value="{{ $opt }}" {{ old('kelas', $user->kelas) === $opt ? 'selected' : '' }}>{{ $opt }}</option>
                     @endforeach
                 </select>

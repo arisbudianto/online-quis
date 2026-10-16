@@ -50,7 +50,12 @@ class ProfileController extends Controller
                 'required', 'string', 'max:50',
                 Rule::unique('users', 'nim')->ignore($user->id),
             ];
-            $rules['kelas'] = ['required', Rule::in(User::KELAS)];
+            // Kelas dipilih dari gabungan daftar kelas dosen/guru siswa ini.
+            // Kelas lama yang tidak ada di daftar tetap boleh dipertahankan.
+            $options = $user->kelasOptions();
+            $rules['kelas'] = $options === []
+                ? ['nullable', 'string', 'max:30']
+                : ['required', Rule::in(array_values(array_unique(array_filter(array_merge($options, [$user->kelas])))))];
         }
 
         $validated = $request->validate($rules);
@@ -62,7 +67,7 @@ class ProfileController extends Controller
 
         if ($isMahasiswa) {
             $user->nim = $validated['nim'];
-            $user->kelas = $validated['kelas'];
+            $user->kelas = $validated['kelas'] ?? $user->kelas;
         }
 
         // Cuma reset verifikasi kalau EMAIL benar-benar berubah -- ganti
@@ -98,5 +103,35 @@ class ProfileController extends Controller
         $request->session()->regenerateToken();
 
         return Redirect::to('/');
+    }
+
+    /** Siswa menambah dosen/guru. */
+    public function addTeacher(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->role === 'mahasiswa', 403);
+
+        $data = $request->validate([
+            'teacher_id' => ['required', 'integer', Rule::exists('users', 'id')->where('role', 'dosen')->whereNotNull('approved_at')],
+        ], ['teacher_id.exists' => 'Dosen/guru tidak tersedia.']);
+
+        $user->teachers()->syncWithoutDetaching([(int) $data['teacher_id']]);
+
+        return Redirect::route('profile.edit')->with('status', 'Dosen/guru ditambahkan.');
+    }
+
+    /** Siswa melepas dosen/guru; minimal satu harus tersisa. */
+    public function removeTeacher(Request $request, User $teacher): RedirectResponse
+    {
+        $user = $request->user();
+        abort_unless($user->role === 'mahasiswa', 403);
+
+        if ($user->teachers()->count() <= 1) {
+            return Redirect::route('profile.edit')->withErrors(['teacher_id' => 'Minimal satu dosen/guru harus tetap dipilih.']);
+        }
+
+        $user->teachers()->detach($teacher->id);
+
+        return Redirect::route('profile.edit')->with('status', "{$teacher->name} dilepas dari daftar dosen/guru Anda.");
     }
 }

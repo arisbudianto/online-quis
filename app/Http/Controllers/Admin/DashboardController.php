@@ -13,7 +13,8 @@ class DashboardController extends Controller
     public function index()
     {
         $stats = [
-            'total_dosen' => User::where('role', 'dosen')->count(),
+            'total_dosen' => User::where('role', 'dosen')->whereNotNull('approved_at')->count(),
+            'dosen_pending' => User::where('role', 'dosen')->whereNull('approved_at')->count(),
             'total_mahasiswa' => User::where('role', 'mahasiswa')->count(),
             'total_kuis' => Quiz::count(),
             'total_attempt' => Attempt::where('status', 'submitted')->count(),

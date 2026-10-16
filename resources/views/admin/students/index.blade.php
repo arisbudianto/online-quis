@@ -36,7 +36,7 @@
            class="btn btn-sm {{ !$kelas ? 'btn-primary' : 'btn-outline-primary' }}">
             Semua Kelas
         </a>
-        @foreach (\App\Models\User::KELAS as $k)
+        @foreach ($kelasOptions as $k)
             <a href="{{ route('admin.students.index', array_filter(['angkatan' => $angkatan, 'kelas' => $k])) }}"
                class="btn btn-sm {{ $kelas === $k ? 'btn-primary' : 'btn-outline-primary' }}">
                 Kelas {{ $k }}
@@ -54,6 +54,7 @@
     </p>
 @endif
 
+<div class="table-responsive">
 <table class="table table-bordered bg-white align-middle">
     <thead>
         <tr>
@@ -62,6 +63,7 @@
             <th>NIM</th>
             <th>Kelas</th>
             <th>Angkatan</th>
+            <th>Dosen/Guru</th>
             <th>Email</th>
             <th>Terdaftar</th>
         </tr>
@@ -74,12 +76,13 @@
                 <td><code>{{ $s->nim ?? '-' }}</code></td>
                 <td>{{ $s->kelas ?? '-' }}</td>
                 <td>{{ $s->angkatan ?? 'Lainnya' }}</td>
+                <td class="small">{{ $s->teachers->pluck('name')->implode(', ') ?: '-' }}</td>
                 <td>{{ $s->email }}</td>
                 <td>{{ $s->created_at->format('d-m-Y') }}</td>
             </tr>
         @empty
             <tr>
-                <td colspan="7" class="text-center text-muted">
+                <td colspan="8" class="text-center text-muted">
                     Tidak ada mahasiswa
                     @if($angkatan || $kelas) dengan filter ini @endif.
                 </td>
@@ -87,6 +90,7 @@
         @endforelse
     </tbody>
 </table>
+</div>
 
 {{ $students->links() }}
 @endsection

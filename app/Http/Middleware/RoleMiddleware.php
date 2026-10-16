@@ -19,6 +19,12 @@ class RoleMiddleware
             abort(403, 'Anda tidak memiliki akses ke halaman ini.');
         }
 
+        // Dosen/guru yang mendaftar sendiri belum boleh memakai menu dosen
+        // sebelum disetujui admin.
+        if ($user->isPendingApproval()) {
+            return redirect()->route('dosen.pending');
+        }
+
         return $next($request);
     }
 }

@@ -15,6 +15,7 @@ use App\Http\Controllers\Dosen\ManualQuestionController;
 use App\Http\Controllers\Dosen\EssayGradingController;
 use App\Http\Controllers\Dosen\SemesterRecapController;
 use App\Http\Controllers\Dosen\CourseEnrollmentController;
+use App\Http\Controllers\Dosen\TeacherClassController;
 use App\Http\Controllers\Mahasiswa\HistoryController;
 use App\Http\Controllers\Mahasiswa\QuizController as MahasiswaQuizController;
 use App\Http\Controllers\Mahasiswa\QuizJoinController;
@@ -45,13 +46,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Redirect setelah login sesuai role
     Route::get('/dashboard', function () {
         $user = auth()->user();
+        if ($user->isPendingApproval()) {
+            return redirect()->route('dosen.pending');
+        }
         if ($user->isDosen()) {
             return redirect()->route('dosen.quizzes.index');
         }
         return redirect()->route('mahasiswa.quizzes.index');
     })->name('dashboard');
     
+    // Dosen/guru baru yang menunggu persetujuan admin.
+    Route::get('/menunggu-persetujuan', function () {
+        $user = auth()->user();
+        if (!$user->isPendingApproval()) {
+            return redirect()->route('dashboard');
+        }
+
+        return view('dosen.pending', ['user' => $user]);
+    })->name('dosen.pending');
+
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile/dosen', [ProfileController::class, 'addTeacher'])->name('profile.teachers.add');
+    Route::delete('/profile/dosen/{teacher}', [ProfileController::class, 'removeTeacher'])->name('profile.teachers.remove');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
@@ -59,6 +75,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:dosen,admin')->prefix('dosen')->name('dosen.')->group(function () {
         Route::resource('quizzes', DosenQuizController::class)->except(['show']);
         Route::resource('courses', CourseController::class)->only(['index', 'store', 'destroy']);
+        // Daftar kelas milik dosen
+        Route::get('kelas', [TeacherClassController::class, 'index'])->name('classes.index');
+        Route::post('kelas', [TeacherClassController::class, 'store'])->name('classes.store');
+        Route::delete('kelas/{teacherClass}', [TeacherClassController::class, 'destroy'])->name('classes.destroy');
         // Rekap nilai per mata kuliah per periode
         Route::get('rekap', [SemesterRecapController::class, 'index'])->name('recap.index');
         Route::get('rekap/export', [SemesterRecapController::class, 'export'])->name('recap.export');
@@ -132,6 +152,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', [AdminDashboardController::class, 'index'])->name('dashboard');
         Route::get('dosen', [LecturerController::class, 'index'])->name('lecturers.index');
         Route::get('dosen/tambah', [LecturerController::class, 'create'])->name('lecturers.create');
+        Route::post('dosen/{lecturer}/setujui', [LecturerController::class, 'approve'])->name('lecturers.approve');
+        Route::delete('dosen/{lecturer}/tolak', [LecturerController::class, 'reject'])->name('lecturers.reject');
         Route::post('dosen', [LecturerController::class, 'store'])->name('lecturers.store');
         Route::get('mahasiswa', [AdminStudentController::class, 'index'])->name('students.index');
         // Periode Akademik

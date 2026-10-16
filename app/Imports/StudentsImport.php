@@ -22,6 +22,17 @@ class StudentsImport implements ToCollection, WithStartRow
     /** @var array<int, string> alasan tiap baris yang dilewati, untuk ditampilkan ke dosen */
     public array $skipped = [];
 
+    /** @var array<int, int> mahasiswa yang sudah punya akun (NIM dan email sama), untuk dihubungkan ke dosen */
+    public array $existingIds = [];
+
+    /**
+     * @param array<int, string> $allowedKelas kelas milik pengimpor; kosong = kelas bebas (admin)
+     * @param User|null $teacher dosen pengimpor; bila ada, siswa lama dengan NIM+email sama dihubungkan
+     */
+    public function __construct(private array $allowedKelas = [], private ?User $teacher = null)
+    {
+    }
+
     // Baris 1 = header, baris 2-3 di template adalah CONTOH tapi tetap diproses
     // seperti biasa (dosen bebas menghapus/menimpa contoh itu). Data mulai
     // dibaca dari baris 2.
@@ -42,7 +53,7 @@ class StudentsImport implements ToCollection, WithStartRow
 
             $name = trim((string) ($row[0] ?? ''));
             $nim = $this->normalizeNim((string) ($row[1] ?? ''));
-            $kelas = strtoupper(trim((string) ($row[2] ?? '')));
+            $kelas = trim((string) ($row[2] ?? ''));
             $email = strtolower(trim((string) ($row[3] ?? '')));
 
             // Lewati baris yang benar-benar kosong semua (sisa baris kosong di template)
@@ -60,8 +71,13 @@ class StudentsImport implements ToCollection, WithStartRow
                 continue;
             }
 
-            if (!in_array($kelas, User::KELAS, true)) {
-                $this->skipped[] = "Baris {$excelRowNumber}: kolom Kelas harus " . implode('/', User::KELAS) . " (ditemukan: \"{$kelas}\").";
+            $kelas = $this->matchKelas($kelas);
+            if ($kelas === null) {
+                $this->skipped[] = ($this->teacher && $this->allowedKelas === [])
+                    ? "Baris {$excelRowNumber}: daftar kelas Anda masih kosong. Tambahkan kelas di menu Kelas Saya dulu."
+                    : "Baris {$excelRowNumber}: kolom Kelas harus salah satu dari "
+                    . ($this->allowedKelas ? implode('/', $this->allowedKelas) : 'kelas yang tidak kosong')
+                    . " (ditemukan: \"" . trim((string) ($row[2] ?? '')) . "\").";
                 continue;
             }
 
@@ -77,6 +93,14 @@ class StudentsImport implements ToCollection, WithStartRow
 
             if (isset($seenEmail[$email])) {
                 $this->skipped[] = "Baris {$excelRowNumber}: email \"{$email}\" duplikat dengan baris {$seenEmail[$email]} di file ini.";
+                continue;
+            }
+
+            $existing = User::where('role', 'mahasiswa')->where('nim', $nim)->first();
+            if ($existing && $this->teacher && strcasecmp($existing->email, $email) === 0) {
+                $this->existingIds[] = $existing->id;
+                $seenNim[$nim] = $excelRowNumber;
+                $seenEmail[$email] = $excelRowNumber;
                 continue;
             }
 
@@ -100,6 +124,26 @@ class StudentsImport implements ToCollection, WithStartRow
                 'email' => $email,
             ];
         }
+    }
+
+    /** Cocokkan kelas tanpa membedakan huruf besar/kecil; kembalikan ejaan resmi. */
+    private function matchKelas(string $kelas): ?string
+    {
+        if ($kelas === '') {
+            return null;
+        }
+
+        if ($this->allowedKelas === []) {
+            return $this->teacher ? null : strtoupper($kelas);
+        }
+
+        foreach ($this->allowedKelas as $k) {
+            if (strcasecmp($k, $kelas) === 0) {
+                return $k;
+            }
+        }
+
+        return null;
     }
 
     /**

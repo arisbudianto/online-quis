@@ -96,8 +96,11 @@ class GoogleAuthTest extends TestCase
         $this->get(route('google.complete'))->assertOk()
             ->assertSee('budi@student.uns.ac.id')->assertSee('Budi Santoso');
 
-        $this->post(route('google.complete.store'), ['name' => 'Budi Santoso', 'nim' => 'K3526010', 'kelas' => 'B'])
-            ->assertRedirect('/dashboard');
+        $teacher = $this->makeTeacher();
+        $this->post(route('google.complete.store'), [
+            'role' => 'mahasiswa', 'teachers' => [$teacher->id],
+            'name' => 'Budi Santoso', 'nim' => 'K3526010', 'kelas' => 'B',
+        ])->assertRedirect('/dashboard');
 
         $user = User::where('email', 'budi@student.uns.ac.id')->firstOrFail();
         $this->assertAuthenticatedAs($user);
@@ -106,6 +109,7 @@ class GoogleAuthTest extends TestCase
         $this->assertSame('K3526010', $user->nim);
         $this->assertTrue($user->hasVerifiedEmail());
         $this->assertNull(session('google_pending'));
+        $this->assertSame([$teacher->id], $user->teachers->pluck('id')->all());
     }
 
     public function test_complete_form_validates_nim_and_kelas(): void
@@ -114,8 +118,13 @@ class GoogleAuthTest extends TestCase
         $this->fakeGoogle(['sub' => 'g-1', 'email' => 'baru@gmail.com', 'name' => 'Baru']);
         $this->googleCallback();
 
-        $this->post(route('google.complete.store'), ['name' => 'Baru', 'nim' => 'K3526010', 'kelas' => 'D'])
-            ->assertSessionHasErrors(['nim', 'kelas']);
+        $teacher = $this->makeTeacher();
+        $this->post(route('google.complete.store'), ['role' => 'mahasiswa', 'teachers' => [$teacher->id], 'name' => 'Baru', 'nim' => 'K3526010', 'kelas' => 'D'])
+            ->assertSessionHasErrors(['nim']);
+        $this->post(route('google.complete.store'), ['role' => 'mahasiswa', 'teachers' => [$teacher->id], 'name' => 'Baru', 'nim' => 'K3526099', 'kelas' => 'D'])
+            ->assertSessionHasErrors(['kelas']);
+        $this->post(route('google.complete.store'), ['role' => 'mahasiswa', 'name' => 'Baru', 'nim' => 'K3526099', 'kelas' => 'A'])
+            ->assertSessionHasErrors(['teachers']);
 
         $this->assertSame(0, User::where('email', 'baru@gmail.com')->count());
     }
@@ -219,11 +228,12 @@ class GoogleAuthTest extends TestCase
 
     public function test_google_created_account_can_set_password_via_forgot_password(): void
     {
-        \Illuminate\Support\Facades\Notification::fake();
         $this->fakeGoogle(['sub' => 'g-1', 'email' => 'dodi@gmail.com', 'name' => 'Dodi']);
         $this->googleCallback();
-        $this->post(route('google.complete.store'), ['name' => 'Dodi', 'nim' => 'K3526011', 'kelas' => 'A']);
+        $teacher = $this->makeTeacher();
+        $this->post(route('google.complete.store'), ['role' => 'mahasiswa', 'teachers' => [$teacher->id], 'name' => 'Dodi', 'nim' => 'K3526011', 'kelas' => 'A']);
         $this->post(route('logout'));
+        \Illuminate\Support\Facades\Notification::fake();
 
         $this->post(route('password.email'), ['email' => 'dodi@gmail.com'])->assertSessionHasNoErrors();
 

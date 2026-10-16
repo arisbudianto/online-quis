@@ -2,12 +2,15 @@
 @section('title', 'Daftar Kuis')
 
 @section('content')
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h3>Kuis Saya</h3>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
         <a href="{{ route('dosen.recap.index') }}" class="btn btn-outline-success">📈 Rekap Nilai</a>
         <a href="{{ route('dosen.courses.index') }}" class="btn btn-outline-secondary">📚 Mata Kuliah</a>
         <a href="{{ route('dosen.students.index') }}" class="btn btn-outline-secondary">🎓 Mahasiswa</a>
+        @if (auth()->user()->role === 'dosen')
+            <a href="{{ route('dosen.classes.index') }}" class="btn btn-outline-secondary">Kelas Saya</a>
+        @endif
         <a href="{{ route('dosen.quizzes.create') }}" class="btn btn-primary">+ Buat Kuis</a>
     </div>
 </div>

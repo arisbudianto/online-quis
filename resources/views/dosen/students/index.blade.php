@@ -9,6 +9,9 @@
             Total: <strong>{{ $students->total() }}</strong>
             @if(!empty($angkatan) || !empty($kelas)) (terfilter) @endif
         </span>
+        @if (auth()->user()->role === 'dosen')
+            <a href="{{ route('dosen.classes.index') }}" class="btn btn-outline-secondary btn-sm">Kelas Saya</a>
+        @endif
         <a href="{{ route('dosen.students.import.form') }}" class="btn btn-primary btn-sm">+ Import Mahasiswa</a>
     </div>
 </div>
@@ -38,7 +41,7 @@
            class="btn btn-sm {{ empty($kelas) ? 'btn-success' : 'btn-outline-success' }}">
             Semua Kelas
         </a>
-        @foreach (\App\Models\User::KELAS as $k)
+        @foreach ($kelasOptions as $k)
             <a href="{{ route('dosen.students.index', array_filter(['angkatan' => $angkatan ?? null, 'kelas' => $k])) }}"
                class="btn btn-sm {{ ($kelas ?? null) === $k ? 'btn-success' : 'btn-outline-success' }}">
                 Kelas {{ $k }}
@@ -56,6 +59,11 @@
     </p>
 @endif
 
+@if (auth()->user()->role === 'dosen')
+    <p class="small text-muted mb-2">Hanya siswa yang memilih Anda sebagai dosen/guru yang tampil di sini.</p>
+@endif
+
+<div class="table-responsive">
 <table class="table table-bordered bg-white align-middle">
     <thead>
         <tr>
@@ -110,6 +118,7 @@
         @endforelse
     </tbody>
 </table>
+</div>
 
 {{ $students->links() }}
 
@@ -136,7 +145,7 @@
                     <label class="form-label">Kelas</label>
                     <select name="kelas" id="edit_kelas" class="form-select">
                         <option value="">— Tidak ada —</option>
-                        @foreach (\App\Models\User::KELAS as $k)
+                        @foreach ($kelasOptions as $k)
                             <option value="{{ $k }}">{{ $k }}</option>
                         @endforeach
                     </select>
@@ -230,7 +239,14 @@ document.addEventListener('DOMContentLoaded', function () {
             document.getElementById('editForm').action = btn.getAttribute('data-action') || '';
             document.getElementById('edit_name').value = btn.getAttribute('data-name') || '';
             document.getElementById('edit_nim').value = btn.getAttribute('data-nim') || '';
-            document.getElementById('edit_kelas').value = btn.getAttribute('data-kelas') || '';
+            var kelasSel = document.getElementById('edit_kelas');
+            var kelasVal = btn.getAttribute('data-kelas') || '';
+            if (kelasVal && !Array.prototype.some.call(kelasSel.options, function (o) { return o.value === kelasVal; })) {
+                var extra = document.createElement('option');
+                extra.value = kelasVal; extra.textContent = kelasVal + ' (di luar daftar kelas Anda)';
+                kelasSel.appendChild(extra);
+            }
+            kelasSel.value = kelasVal;
             document.getElementById('edit_email').value = btn.getAttribute('data-email') || '';
         });
     }

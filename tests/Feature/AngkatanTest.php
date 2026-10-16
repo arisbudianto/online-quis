@@ -70,10 +70,8 @@ class AngkatanTest extends TestCase
 
     public function test_student_lists_filter_by_angkatan(): void
     {
-        $this->mhs('K3523053');
-        $this->mhs('51106102610001');
-        $this->mhs('KK3524078');
-        $dosen = User::factory()->create(['role' => 'dosen']);
+        $dosen = $this->makeTeacher();
+        $this->linkStudents($dosen, $this->mhs('K3523053'), $this->mhs('51106102610001'), $this->mhs('KK3524078'));
         $admin = User::factory()->create(['role' => 'admin']);
 
         $this->actingAs($dosen)->get(route('dosen.students.index', ['angkatan' => '2023']))

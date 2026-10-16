@@ -7,15 +7,14 @@ use App\Models\User;
 use App\Providers\RouteServiceProvider;
 use App\Support\GoogleEmailNotVerified;
 use App\Support\GoogleOAuth;
+use App\Support\RoleRegistration;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Throwable;
 
@@ -25,8 +24,9 @@ use Throwable;
  * - Tamu, akun Google sudah terhubung: langsung masuk.
  * - Tamu, email Google sama dengan akun yang ada: akun dihubungkan,
  *   email ditandai terverifikasi, lalu masuk.
- * - Tamu, email belum terdaftar: isi NIM dan kelas, akun mahasiswa dibuat
- *   dengan email sudah terverifikasi.
+ * - Tamu, email belum terdaftar: pilih peran (mahasiswa/siswa atau
+ *   dosen/guru) dan lengkapi data; email langsung terverifikasi.
+ *   Dosen/guru tetap menunggu persetujuan admin.
  * - Sudah login tetapi email belum terverifikasi: email Google harus sama
  *   dengan email akun, lalu akun ditandai terverifikasi.
  *
@@ -95,11 +95,7 @@ class GoogleAuthController extends Controller
             return redirect()->route('login')->withErrors(['google' => 'Sesi pendaftaran Google kedaluwarsa. Silakan ulangi.']);
         }
 
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'nim' => ['required', 'string', 'max:50', 'unique:' . User::class],
-            'kelas' => ['required', 'string', Rule::in(User::KELAS)],
-        ]);
+        $data = RoleRegistration::validate($request->all());
 
         // Bisa saja email atau akun Google ini terdaftar di tab lain sejak tadi.
         $taken = User::whereRaw('LOWER(email) = ?', [$pending['email']])
@@ -111,22 +107,10 @@ class GoogleAuthController extends Controller
             return redirect()->route('login')->withErrors(['google' => 'Akun dengan email ini sudah terdaftar. Silakan masuk dengan Google.']);
         }
 
-        $user = DB::transaction(function () use ($data, $pending) {
-            $user = User::create([
-                'name' => $data['name'],
-                'nim' => $data['nim'],
-                'kelas' => $data['kelas'],
-                'email' => $pending['email'],
-                'password' => Hash::make(Str::random(40)),
-                'role' => 'mahasiswa',
-            ]);
-            $user->forceFill([
-                'google_id' => $pending['sub'],
-                'email_verified_at' => now(),
-            ])->save();
-
-            return $user;
-        });
+        $user = RoleRegistration::create($data, $pending['email'], Hash::make(Str::random(40)), [
+            'google_id' => $pending['sub'],
+            'email_verified_at' => now(),
+        ]);
 
         $request->session()->forget(self::PENDING_KEY);
 

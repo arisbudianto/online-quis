@@ -27,7 +27,8 @@ class StudentImportController extends Controller
 
         $sendEmail = $request->boolean('send_email', true);
 
-        $import = new StudentsImport();
+        $importer = $request->user();
+        $import = new StudentsImport($importer->kelasOptions(), $importer->role === 'dosen' ? $importer : null);
 
         try {
             Excel::import($import, $request->file('file'));
@@ -35,7 +36,7 @@ class StudentImportController extends Controller
             return back()->withErrors(['file' => 'Gagal membaca file xlsx: ' . $e->getMessage()]);
         }
 
-        if (empty($import->parsed)) {
+        if (empty($import->parsed) && empty($import->existingIds)) {
             $message = 'Tidak ada baris mahasiswa yang valid untuk diimpor.';
             if (!empty($import->skipped)) {
                 $message .= ' Detail: ' . implode(' | ', array_slice($import->skipped, 0, 8));
@@ -45,7 +46,7 @@ class StudentImportController extends Controller
 
         $createdUsers = [];
 
-        DB::transaction(function () use ($import, &$createdUsers) {
+        DB::transaction(function () use ($import, $importer, &$createdUsers) {
             foreach ($import->parsed as $row) {
                 $plainPassword = Str::random(8);
 
@@ -58,7 +59,19 @@ class StudentImportController extends Controller
                     'role' => 'mahasiswa',
                 ]);
 
+                if ($importer->role === 'dosen') {
+                    $user->teachers()->syncWithoutDetaching([$importer->id]);
+                }
+
                 $createdUsers[] = ['user' => $user, 'password' => $plainPassword];
+            }
+
+            // Siswa yang sudah punya akun (NIM dan email sama) cukup
+            // dihubungkan ke dosen pengimpor.
+            if ($importer->role === 'dosen') {
+                foreach ($import->existingIds as $id) {
+                    $importer->students()->syncWithoutDetaching([$id]);
+                }
             }
         });
 
@@ -76,6 +89,9 @@ class StudentImportController extends Controller
         }
 
         $status = count($createdUsers) . ' akun mahasiswa berhasil dibuat.';
+        if (!empty($import->existingIds)) {
+            $status .= ' ' . count($import->existingIds) . ' mahasiswa yang sudah punya akun dihubungkan ke Anda.';
+        }
 
         if ($sendEmail) {
             $status .= ' Email kredensial dikirim ke semuanya' . ($emailFailures > 0 ? " (kecuali {$emailFailures} yang gagal terkirim, cek storage/logs/laravel.log)." : '.');
@@ -98,7 +114,12 @@ class StudentImportController extends Controller
         $angkatan = \App\Support\Angkatan::isValid($angkatan) ? $angkatan : null;
         $kelas    = $request->query('kelas');
 
-        $students = User::where('role', 'mahasiswa')
+        $viewer = $request->user();
+        $kelasOptions = $viewer->kelasOptions();
+
+        // Dosen hanya melihat siswa yang memilihnya; admin melihat semua.
+        $students = User::visibleTo($viewer)
+            ->with('teachers:id,name')
             ->angkatan($angkatan)
             ->when($kelas, fn ($q) => $q->where('kelas', $kelas))
             ->orderBy('kelas')
@@ -106,6 +127,6 @@ class StudentImportController extends Controller
             ->paginate(30)
             ->withQueryString();
 
-        return view('dosen.students.index', compact('students', 'angkatan', 'kelas'));
+        return view('dosen.students.index', compact('students', 'angkatan', 'kelas', 'kelasOptions'));
     }
 }
