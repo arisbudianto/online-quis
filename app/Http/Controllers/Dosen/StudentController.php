@@ -20,7 +20,7 @@ class StudentController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'nim' => ['nullable', 'string', 'max:50', Rule::unique('users', 'nim')->ignore($student->id)],
-            'kelas' => ['nullable', 'string', 'max:10'],
+            'kelas' => ['nullable', Rule::in(User::KELAS)],
             'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($student->id)],
         ]);
 

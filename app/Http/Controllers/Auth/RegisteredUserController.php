@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Notifications\AccountCredentialsNotification;
@@ -35,7 +36,7 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'nim' => ['required', 'string', 'max:50', 'unique:'.User::class],
-            'kelas' => ['required', 'string', 'in:A,B,C'],
+            'kelas' => ['required', 'string', Rule::in(User::KELAS)],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);

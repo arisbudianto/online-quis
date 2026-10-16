@@ -25,6 +25,9 @@ class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, MustVerifyEmailTrait;
 
+    /** Kelas yang berlaku di prodi (keputusan pemilik aplikasi, 16-10-2026). */
+    public const KELAS = ['A', 'B', 'C'];
+
     protected $fillable = [
         'name',
         'nim',

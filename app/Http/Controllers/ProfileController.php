@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,7 +50,7 @@ class ProfileController extends Controller
                 'required', 'string', 'max:50',
                 Rule::unique('users', 'nim')->ignore($user->id),
             ];
-            $rules['kelas'] = ['required', 'in:A,B,C'];
+            $rules['kelas'] = ['required', Rule::in(User::KELAS)];
         }
 
         $validated = $request->validate($rules);

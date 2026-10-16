@@ -60,8 +60,8 @@ class StudentsImport implements ToCollection, WithStartRow
                 continue;
             }
 
-            if (!in_array($kelas, ['A', 'B', 'C'], true)) {
-                $this->skipped[] = "Baris {$excelRowNumber}: kolom Kelas harus A/B/C (ditemukan: \"{$kelas}\").";
+            if (!in_array($kelas, User::KELAS, true)) {
+                $this->skipped[] = "Baris {$excelRowNumber}: kolom Kelas harus " . implode('/', User::KELAS) . " (ditemukan: \"{$kelas}\").";
                 continue;
             }
 

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Dosen;
 
+use App\Models\User;
+use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 use App\Models\AcademicPeriod;
 use App\Models\Course;
@@ -117,7 +119,7 @@ class QuizController extends Controller
             'is_published' => ['nullable', 'boolean'],
             'is_public' => ['nullable', 'boolean'],
             'target_kelas' => ['nullable', 'array'],
-            'target_kelas.*' => ['in:A,B,C'],
+            'target_kelas.*' => [Rule::in(User::KELAS)],
             'notify_students' => ['nullable', 'boolean'],
             'notify_email' => ['nullable', 'boolean'],
         ]);
