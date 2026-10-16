@@ -5,6 +5,7 @@
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Kuis Saya</h3>
     <div class="d-flex gap-2">
+        <a href="{{ route('dosen.recap.index') }}" class="btn btn-outline-success">📈 Rekap Nilai</a>
         <a href="{{ route('dosen.courses.index') }}" class="btn btn-outline-secondary">📚 Mata Kuliah</a>
         <a href="{{ route('dosen.students.index') }}" class="btn btn-outline-secondary">🎓 Mahasiswa</a>
         <a href="{{ route('dosen.quizzes.create') }}" class="btn btn-primary">+ Buat Kuis</a>

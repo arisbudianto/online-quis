@@ -13,6 +13,7 @@ use App\Http\Controllers\Dosen\StudentController as DosenStudentController;
 use App\Http\Controllers\Dosen\QuizAnalyticsController;
 use App\Http\Controllers\Dosen\ManualQuestionController;
 use App\Http\Controllers\Dosen\EssayGradingController;
+use App\Http\Controllers\Dosen\SemesterRecapController;
 use App\Http\Controllers\Mahasiswa\HistoryController;
 use App\Http\Controllers\Mahasiswa\QuizController as MahasiswaQuizController;
 use App\Http\Controllers\Mahasiswa\QuizJoinController;
@@ -56,6 +57,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:dosen,admin')->prefix('dosen')->name('dosen.')->group(function () {
         Route::resource('quizzes', DosenQuizController::class)->except(['show']);
         Route::resource('courses', CourseController::class)->only(['index', 'store', 'destroy']);
+        // Rekap nilai per mata kuliah per periode
+        Route::get('rekap', [SemesterRecapController::class, 'index'])->name('recap.index');
+        Route::get('rekap/export', [SemesterRecapController::class, 'export'])->name('recap.export');
         Route::post('quizzes/{quiz}/import', [QuestionImportController::class, 'store'])->name('quizzes.import');
         Route::get('quizzes/{quiz}/scores', [ScoreController::class, 'index'])->name('quizzes.scores');
         Route::get('quizzes/{quiz}/scores/export', [ScoreController::class, 'export'])->name('quizzes.scores.export');
