@@ -8,6 +8,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Course;
 use App\Services\SemesterAnalyticsService;
 use App\Services\SemesterGradeService;
+use App\Support\Angkatan;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -19,13 +20,13 @@ class SemesterRecapController extends Controller
         $periods = AcademicPeriod::latestFirst()->get();
         $courses = Course::where('dosen_id', $user->id)->orderBy('name')->get();
 
-        [$period, $course, $kelas] = $this->selection($request, $periods, $courses);
+        [$period, $course, $kelas, $angkatan] = $this->selection($request, $periods, $courses);
 
         $recap = ($period && $course)
-            ? $service->build($user, $course, $period, $kelas)
+            ? $service->build($user, $course, $period, $kelas, $angkatan)
             : null;
 
-        return view('dosen.recap.index', compact('periods', 'courses', 'period', 'course', 'kelas', 'recap'));
+        return view('dosen.recap.index', compact('periods', 'courses', 'period', 'course', 'kelas', 'angkatan', 'recap'));
     }
 
     public function analytics(Request $request, SemesterGradeService $service, SemesterAnalyticsService $analytics)
@@ -34,14 +35,14 @@ class SemesterRecapController extends Controller
         $periods = AcademicPeriod::latestFirst()->get();
         $courses = Course::where('dosen_id', $user->id)->orderBy('name')->get();
 
-        [$period, $course, $kelas] = $this->selection($request, $periods, $courses);
+        [$period, $course, $kelas, $angkatan] = $this->selection($request, $periods, $courses);
 
-        $recap = ($period && $course) ? $service->build($user, $course, $period, $kelas) : null;
+        $recap = ($period && $course) ? $service->build($user, $course, $period, $kelas, $angkatan) : null;
         $stats = ($recap && $recap['quizzes']->isNotEmpty() && $recap['enrolledCount'] > 0)
             ? $analytics->build($recap)
             : null;
 
-        return view('dosen.recap.analytics', compact('periods', 'courses', 'period', 'course', 'kelas', 'recap', 'stats'));
+        return view('dosen.recap.analytics', compact('periods', 'courses', 'period', 'course', 'kelas', 'angkatan', 'recap', 'stats'));
     }
 
     public function export(Request $request, SemesterGradeService $service)
@@ -50,14 +51,15 @@ class SemesterRecapController extends Controller
         $periods = AcademicPeriod::latestFirst()->get();
         $courses = Course::where('dosen_id', $user->id)->orderBy('name')->get();
 
-        [$period, $course, $kelas] = $this->selection($request, $periods, $courses);
+        [$period, $course, $kelas, $angkatan] = $this->selection($request, $periods, $courses);
         abort_unless($period && $course, 422, 'Pilih periode dan mata kuliah dulu.');
 
-        $recap = $service->build($user, $course, $period, $kelas);
+        $recap = $service->build($user, $course, $period, $kelas, $angkatan);
 
         $fileName = 'rekap-' . str($course->name)->slug()
             . '-' . $period->year_start . '-' . $period->semester
             . ($kelas ? '-kelas-' . str($kelas)->slug() : '')
+            . ($angkatan ? '-angkatan-' . $angkatan : '')
             . '.xlsx';
 
         return Excel::download(new SemesterRecapExport($course, $period, $recap), $fileName);
@@ -85,6 +87,9 @@ class SemesterRecapController extends Controller
         $kelas = $request->query('kelas');
         $kelas = is_string($kelas) && $kelas !== '' ? $kelas : null;
 
-        return [$period, $course, $kelas];
+        $angkatan = $request->query('angkatan');
+        $angkatan = is_string($angkatan) && Angkatan::isValid($angkatan) ? $angkatan : null;
+
+        return [$period, $course, $kelas, $angkatan];
     }
 }

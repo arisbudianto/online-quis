@@ -7,6 +7,7 @@ use App\Models\AcademicPeriod;
 use App\Models\Course;
 use App\Models\CourseEnrollment;
 use App\Models\User;
+use App\Support\Angkatan;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
@@ -20,9 +21,13 @@ class CourseEnrollmentController extends Controller
         $periods = AcademicPeriod::latestFirst()->get();
         $period = $this->period($request, $periods);
 
+        $angkatan = $request->query('angkatan');
+        $angkatan = Angkatan::isValid($angkatan) ? $angkatan : null;
+
         $enrollments = $period
             ? CourseEnrollment::where('course_id', $course->id)
                 ->where('academic_period_id', $period->id)
+                ->whereHas('student', fn ($q) => $q->angkatan($angkatan))
                 ->with('student:id,name,nim,kelas')
                 ->get()
                 ->sortBy(fn ($e) => [$e->student->kelas ?? '', $e->student->nim ?? ''])
@@ -31,15 +36,26 @@ class CourseEnrollmentController extends Controller
 
         $kelasOptions = collect(User::KELAS);
 
-        // Jumlah mahasiswa per kelas resmi, ditampilkan sebelum dosen
-        // menekan "daftarkan semua".
-        $kelasCounts = User::where('role', 'mahasiswa')
+        // Jumlah mahasiswa per angkatan dan kelas resmi, ditampilkan sebelum
+        // dosen menekan "daftarkan semua".
+        $counts = [];
+        User::where('role', 'mahasiswa')
             ->whereIn('kelas', User::KELAS)
-            ->selectRaw('kelas, count(*) as total')
-            ->groupBy('kelas')
-            ->pluck('total', 'kelas');
+            ->get(['nim', 'kelas'])
+            ->each(function (User $u) use (&$counts) {
+                $a = $u->angkatan ?? Angkatan::LAINNYA;
+                $counts[$a][$u->kelas] = ($counts[$a][$u->kelas] ?? 0) + 1;
+            });
+        $kelasCounts = collect(User::KELAS)->mapWithKeys(
+            fn ($k) => [$k => collect($counts)->sum(fn ($row) => $row[$k] ?? 0)]
+        );
+        $angkatanCounts = collect(Angkatan::options())->mapWithKeys(
+            fn ($label, $a) => [$a => $counts[$a] ?? []]
+        );
 
-        return view('dosen.enrollments.index', compact('course', 'periods', 'period', 'enrollments', 'kelasOptions', 'kelasCounts'));
+        return view('dosen.enrollments.index', compact(
+            'course', 'periods', 'period', 'enrollments', 'kelasOptions', 'kelasCounts', 'angkatanCounts', 'angkatan'
+        ));
     }
 
     /** Tambah peserta dari daftar NIM (dipisah baris, spasi, koma, atau titik koma). */
@@ -78,7 +94,7 @@ class CourseEnrollmentController extends Controller
         return $redirect;
     }
 
-    /** Tambah semua mahasiswa satu kelas, opsional dibatasi awalan NIM (angkatan). */
+    /** Tambah semua mahasiswa satu kelas, opsional dibatasi angkatan. */
     public function storeKelas(Request $request, Course $course)
     {
         $this->authorizeCourse($request, $course);
@@ -86,31 +102,32 @@ class CourseEnrollmentController extends Controller
         $data = $request->validate([
             'academic_period_id' => ['required', 'exists:academic_periods,id'],
             'kelas' => ['required', Rule::in(User::KELAS)],
-            'nim_prefix' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
+            'angkatan' => ['nullable', Rule::in(array_keys(Angkatan::options()))],
         ]);
 
-        $ids = $this->studentIds([$data['kelas']], $data['nim_prefix'] ?? null);
+        $ids = $this->studentIds([$data['kelas']], $data['angkatan'] ?? null);
         $added = $this->enroll($course, (int) $data['academic_period_id'], $ids);
 
+        $scope = "kelas {$data['kelas']}" . $this->angkatanText($data['angkatan'] ?? null);
+
         return redirect()->route('dosen.enrollments.index', [$course, 'periode' => $data['academic_period_id']])
-            ->with('status', "{$added} mahasiswa kelas {$data['kelas']} ditambahkan dari {$ids->count()} yang cocok.");
+            ->with('status', "{$added} mahasiswa {$scope} ditambahkan dari {$ids->count()} yang cocok.");
     }
 
-    /** Tambah semua mahasiswa kelas A, B, dan C sekaligus, opsional dibatasi awalan NIM. */
+    /** Tambah semua mahasiswa kelas A, B, dan C sekaligus, opsional dibatasi angkatan. */
     public function storeAllKelas(Request $request, Course $course)
     {
         $this->authorizeCourse($request, $course);
 
         $data = $request->validate([
             'academic_period_id' => ['required', 'exists:academic_periods,id'],
-            'nim_prefix' => ['nullable', 'string', 'max:20', 'regex:/^[A-Za-z0-9]+$/'],
+            'angkatan' => ['nullable', Rule::in(array_keys(Angkatan::options()))],
         ]);
 
-        $ids = $this->studentIds(User::KELAS, $data['nim_prefix'] ?? null);
+        $ids = $this->studentIds(User::KELAS, $data['angkatan'] ?? null);
         $added = $this->enroll($course, (int) $data['academic_period_id'], $ids);
 
-        $scope = 'kelas ' . implode(', ', User::KELAS)
-            . (!empty($data['nim_prefix']) ? ' dengan awalan NIM ' . strtoupper($data['nim_prefix']) : '');
+        $scope = 'kelas ' . implode(', ', User::KELAS) . $this->angkatanText($data['angkatan'] ?? null);
 
         return redirect()->route('dosen.enrollments.index', [$course, 'periode' => $data['academic_period_id']])
             ->with('status', "{$added} mahasiswa {$scope} ditambahkan dari {$ids->count()} yang cocok."
@@ -118,12 +135,21 @@ class CourseEnrollmentController extends Controller
     }
 
     /** @param array<int, string> $kelas */
-    private function studentIds(array $kelas, ?string $nimPrefix): Collection
+    private function studentIds(array $kelas, ?string $angkatan): Collection
     {
         return User::where('role', 'mahasiswa')
             ->whereIn('kelas', $kelas)
-            ->when(!empty($nimPrefix), fn ($q) => $q->where('nim', 'like', strtoupper($nimPrefix) . '%'))
+            ->angkatan($angkatan)
             ->pluck('id');
+    }
+
+    private function angkatanText(?string $angkatan): string
+    {
+        if (!Angkatan::isValid($angkatan)) {
+            return '';
+        }
+
+        return $angkatan === Angkatan::LAINNYA ? ' angkatan Lainnya' : " angkatan {$angkatan}";
     }
 
     public function destroy(Request $request, Course $course, CourseEnrollment $enrollment)

@@ -8,7 +8,7 @@
 </div>
 
 <form method="GET" action="{{ route('dosen.recap.index') }}" class="row g-2 align-items-end mb-3">
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <label class="form-label small mb-1">Periode</label>
         <select name="periode" class="form-select form-select-sm">
             @forelse ($periods as $p)
@@ -18,7 +18,7 @@
             @endforelse
         </select>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <label class="form-label small mb-1">Mata Kuliah</label>
         <select name="mk" class="form-select form-select-sm">
             <option value="">Pilih mata kuliah</option>
@@ -33,6 +33,15 @@
             <option value="">Semua</option>
             @foreach (($recap['kelasOptions'] ?? []) as $k)
                 <option value="{{ $k }}" @selected($kelas === $k)>{{ $k }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-sm-2">
+        <label class="form-label small mb-1">Angkatan</label>
+        <select name="angkatan" class="form-select form-select-sm">
+            <option value="">Semua</option>
+            @foreach (($recap['angkatanOptions'] ?? \App\Support\Angkatan::options()) as $a => $aLabel)
+                <option value="{{ $a }}" @selected($angkatan === (string) $a)>{{ $aLabel }}</option>
             @endforeach
         </select>
     </div>
@@ -73,9 +82,9 @@
             · <a href="{{ route('dosen.enrollments.index', [$course, 'periode' => $period->id]) }}">kelola peserta</a>
         </div>
         <div class="d-flex gap-2">
-            <a href="{{ route('dosen.recap.analytics', array_filter(['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas])) }}"
+            <a href="{{ route('dosen.recap.analytics', array_filter(['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas, 'angkatan' => $angkatan])) }}"
                class="btn btn-sm btn-outline-primary">📊 Analitik</a>
-            <a href="{{ route('dosen.recap.export', ['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas]) }}"
+            <a href="{{ route('dosen.recap.export', array_filter(['periode' => $period->id, 'mk' => $course->id, 'kelas' => $kelas, 'angkatan' => $angkatan])) }}"
                class="btn btn-sm btn-success">Export Excel</a>
         </div>
     </div>
@@ -87,6 +96,7 @@
                     <th>NIM</th>
                     <th>Nama</th>
                     <th>Kelas</th>
+                    <th>Angkatan</th>
                     @foreach ($recap['quizzes'] as $quiz)
                         <th class="text-center" title="{{ $quiz->title }}">{{ \Illuminate\Support\Str::limit($quiz->title, 24) }}</th>
                     @endforeach
@@ -100,6 +110,7 @@
                         <td>{{ $row['student']->nim }}</td>
                         <td>{{ $row['student']->name }}</td>
                         <td>{{ $row['student']->kelas }}</td>
+                        <td>{{ $row['student']->angkatan ?? 'Lainnya' }}</td>
                         @foreach ($recap['quizzes'] as $quiz)
                             @php($cell = $row['cells'][$quiz->id])
                             <td class="text-center">
@@ -124,7 +135,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ 5 + $recap['quizzes']->count() }}" class="text-center text-muted">Tidak ada peserta di kelas ini.</td></tr>
+                    <tr><td colspan="{{ 6 + $recap['quizzes']->count() }}" class="text-center text-muted">Tidak ada peserta dengan filter ini.</td></tr>
                 @endforelse
             </tbody>
         </table>

@@ -23,6 +23,15 @@
             @endforelse
         </select>
     </div>
+    <div class="col-sm-3">
+        <label class="form-label small mb-1">Angkatan (daftar peserta)</label>
+        <select name="angkatan" class="form-select form-select-sm" onchange="this.form.submit()">
+            <option value="">Semua angkatan</option>
+            @foreach (\App\Support\Angkatan::options() as $a => $aLabel)
+                <option value="{{ $a }}" @selected($angkatan === (string) $a)>{{ $aLabel }}</option>
+            @endforeach
+        </select>
+    </div>
 </form>
 
 @if ($period)
@@ -31,26 +40,48 @@
         <div class="card mb-3 border-success">
             <div class="card-header">Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}</div>
             <div class="card-body">
-                <p class="small text-muted mb-2">
-                    Terdaftar di aplikasi:
-                    @foreach (\App\Models\User::KELAS as $k)
-                        kelas {{ $k }} {{ $kelasCounts[$k] ?? 0 }}{{ $loop->last ? '' : ',' }}
-                    @endforeach
-                    (total {{ $kelasCounts->sum() }}). Mahasiswa yang sudah terdaftar dilewati.
-                </p>
+                <table class="table table-sm table-bordered small mb-2">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Angkatan</th>
+                            @foreach (\App\Models\User::KELAS as $k)<th class="text-center">{{ $k }}</th>@endforeach
+                            <th class="text-center">Jumlah</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($angkatanCounts as $a => $perKelas)
+                            <tr>
+                                <td>{{ \App\Support\Angkatan::label($a) }}</td>
+                                @foreach (\App\Models\User::KELAS as $k)<td class="text-center">{{ $perKelas[$k] ?? 0 }}</td>@endforeach
+                                <td class="text-center fw-semibold">{{ array_sum($perKelas) }}</td>
+                            </tr>
+                        @endforeach
+                        <tr class="table-light">
+                            <td>Semua</td>
+                            @foreach (\App\Models\User::KELAS as $k)<td class="text-center">{{ $kelasCounts[$k] ?? 0 }}</td>@endforeach
+                            <td class="text-center fw-semibold">{{ $kelasCounts->sum() }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p class="small text-muted mb-2">Mahasiswa aplikasi menurut angkatan dan kelas. Yang sudah terdaftar dilewati.</p>
                 <form method="POST" action="{{ route('dosen.enrollments.storeAllKelas', $course) }}" class="row g-2 align-items-end"
-                      onsubmit="return confirm('Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}' + (this.nim_prefix.value ? ' dengan awalan NIM ' + this.nim_prefix.value.toUpperCase() : '') + ' ke {{ addslashes($course->name) }} ({{ $period->label }})?')">
+                      onsubmit="var s=this.angkatan; return confirm('Daftarkan semua mahasiswa kelas {{ implode(', ', \App\Models\User::KELAS) }}' + (s.value ? ' angkatan ' + s.options[s.selectedIndex].text : ' dari semua angkatan') + ' ke {{ addslashes($course->name) }} ({{ $period->label }})?')">
                     @csrf
                     <input type="hidden" name="academic_period_id" value="{{ $period->id }}">
                     <div class="col-7">
-                        <label class="form-label small mb-1">Awalan NIM (opsional)</label>
-                        <input type="text" name="nim_prefix" class="form-control form-control-sm" placeholder="contoh K3526">
+                        <label class="form-label small mb-1">Angkatan</label>
+                        <select name="angkatan" class="form-select form-select-sm">
+                            <option value="">Semua angkatan</option>
+                            @foreach (\App\Support\Angkatan::options() as $a => $aLabel)
+                                <option value="{{ $a }}">{{ $aLabel }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-5">
                         <button class="btn btn-success btn-sm w-100">Daftarkan semua</button>
                     </div>
                     <div class="col-12 form-text">
-                        Isi awalan NIM bila mata kuliah ini hanya untuk satu angkatan, supaya angkatan lain tidak ikut terdaftar.
+                        Pilih angkatan bila mata kuliah ini hanya untuk satu angkatan, supaya angkatan lain tidak ikut terdaftar.
                     </div>
                 </form>
             </div>
@@ -84,8 +115,13 @@
                         </select>
                     </div>
                     <div class="col-7">
-                        <label class="form-label small mb-1">Awalan NIM (opsional)</label>
-                        <input type="text" name="nim_prefix" class="form-control form-control-sm" placeholder="contoh K3526">
+                        <label class="form-label small mb-1">Angkatan</label>
+                        <select name="angkatan" class="form-select form-select-sm">
+                            <option value="">Semua angkatan</option>
+                            @foreach (\App\Support\Angkatan::options() as $a => $aLabel)
+                                <option value="{{ $a }}">{{ $aLabel }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-12">
                         <button class="btn btn-outline-primary btn-sm">Tambahkan kelas</button>
@@ -96,10 +132,11 @@
     </div>
 
     <div class="col-lg-7">
-        <p class="text-muted small mb-2">{{ $enrollments->count() }} peserta terdaftar di {{ $period->label }}.</p>
+        <p class="text-muted small mb-2">{{ $enrollments->count() }} peserta terdaftar di {{ $period->label }}{{ $angkatan ? ', angkatan ' . \App\Support\Angkatan::label($angkatan) : '' }}.</p>
+        <div class="table-responsive">
         <table class="table table-bordered table-sm bg-white align-middle">
             <thead class="table-light">
-                <tr><th>NIM</th><th>Nama</th><th>Kelas</th><th></th></tr>
+                <tr><th>NIM</th><th>Nama</th><th>Kelas</th><th>Angkatan</th><th></th></tr>
             </thead>
             <tbody>
                 @forelse ($enrollments as $e)
@@ -107,6 +144,7 @@
                         <td>{{ $e->student->nim }}</td>
                         <td>{{ $e->student->name }}</td>
                         <td>{{ $e->student->kelas }}</td>
+                        <td>{{ $e->student->angkatan ?? 'Lainnya' }}</td>
                         <td class="text-end">
                             <form method="POST" action="{{ route('dosen.enrollments.destroy', [$course, $e]) }}"
                                   onsubmit="return confirm('Hapus {{ addslashes($e->student->name) }} dari peserta?')">
@@ -117,10 +155,11 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="4" class="text-center text-muted">Belum ada peserta.</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted">Belum ada peserta.</td></tr>
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 @endif

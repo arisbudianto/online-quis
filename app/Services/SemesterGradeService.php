@@ -9,6 +9,7 @@ use App\Models\CourseEnrollment;
 use App\Models\GradeScale;
 use App\Models\Quiz;
 use App\Models\User;
+use App\Support\Angkatan;
 use Illuminate\Support\Collection;
 
 /**
@@ -41,11 +42,12 @@ class SemesterGradeService
      *   quizzes: Collection<int, Quiz>,
      *   rows: Collection<int, array{student: User, cells: array, final: ?float, letter: ?string, weight: ?float, complete: bool}>,
      *   kelasOptions: array<int, string>,
+     *   angkatanOptions: array<string, string>,
      *   enrolledCount: int,
      *   unenrolled: Collection<int, User>
      * }
      */
-    public function build(User $dosen, Course $course, AcademicPeriod $period, ?string $kelas = null): array
+    public function build(User $dosen, Course $course, AcademicPeriod $period, ?string $kelas = null, ?string $angkatan = null): array
     {
         $quizzes = Quiz::where('dosen_id', $dosen->id)
             ->where('course_id', $course->id)
@@ -61,6 +63,13 @@ class SemesterGradeService
             ->get(['id', 'name', 'nim', 'kelas']);
 
         $kelasOptions = $students->pluck('kelas')->filter()->unique()->sort()->values()->all();
+
+        // Angkatan yang benar-benar ada di antara peserta, urut seperti config.
+        $present = $students->map(fn ($s) => $s->angkatan ?? Angkatan::LAINNYA)->unique();
+        $angkatanOptions = collect(Angkatan::options())
+            ->filter(fn ($label, $a) => $present->contains($a))
+            ->all();
+        $angkatan = Angkatan::isValid($angkatan) ? $angkatan : null;
 
         $attempts = $quizzes->isEmpty()
             ? collect()
@@ -79,6 +88,7 @@ class SemesterGradeService
 
         $rows = $students
             ->when($kelas !== null && $kelas !== '', fn ($c) => $c->filter(fn ($s) => $s->kelas === $kelas))
+            ->when($angkatan !== null, fn ($c) => $c->filter(fn ($s) => ($s->angkatan ?? Angkatan::LAINNYA) === $angkatan))
             ->map(function (User $student) use ($quizzes, $scales, $byUser) {
                 $byQuiz = $byUser->get($student->id, collect())->groupBy('quiz_id');
 
@@ -111,6 +121,7 @@ class SemesterGradeService
             'quizzes' => $quizzes,
             'rows' => $rows,
             'kelasOptions' => $kelasOptions,
+            'angkatanOptions' => $angkatanOptions,
             'enrolledCount' => $students->count(),
             'unenrolled' => $unenrolled,
         ];

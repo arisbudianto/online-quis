@@ -21,10 +21,10 @@
            class="btn btn-sm {{ empty($angkatan) ? 'btn-primary' : 'btn-outline-primary' }}">
             Semua Angkatan
         </a>
-        @foreach (['2026', '2025', '2024'] as $a)
+        @foreach (\App\Support\Angkatan::options() as $a => $aLabel)
             <a href="{{ route('dosen.students.index', array_filter(['angkatan' => $a, 'kelas' => $kelas ?? null])) }}"
-               class="btn btn-sm {{ ($angkatan ?? null) === $a ? 'btn-primary' : 'btn-outline-primary' }}">
-                {{ $a }}
+               class="btn btn-sm {{ ($angkatan ?? null) === (string) $a ? 'btn-primary' : 'btn-outline-primary' }}">
+                {{ $aLabel }}
             </a>
         @endforeach
     </div>
@@ -50,7 +50,7 @@
 @if(!empty($angkatan) || !empty($kelas))
     <p class="small text-muted mb-3">
         Filter aktif:
-        @if(!empty($angkatan)) <span class="badge bg-dark">Angkatan {{ $angkatan }}</span> @endif
+        @if(!empty($angkatan)) <span class="badge bg-dark">Angkatan {{ \App\Support\Angkatan::label($angkatan) }}</span> @endif
         @if(!empty($kelas)) <span class="badge bg-success">Kelas {{ $kelas }}</span> @endif
         <a href="{{ route('dosen.students.index') }}" class="ms-1">[hapus filter]</a>
     </p>
@@ -71,23 +71,12 @@
     </thead>
     <tbody>
         @forelse ($students as $s)
-            @php
-                $detectedAngkatan = '-';
-                $nim = $s->nim ?? '';
-                if (str_starts_with($nim, 'K3524')) {
-                    $detectedAngkatan = '2024';
-                } elseif (str_starts_with($nim, 'K3525')) {
-                    $detectedAngkatan = '2025';
-                } elseif (preg_match('/^[0-9]{10,}$/', $nim) || (strlen($nim) >= 10 && !str_starts_with($nim, 'K352'))) {
-                    $detectedAngkatan = '2026';
-                }
-            @endphp
             <tr>
                 <td>{{ $students->firstItem() + $loop->index }}</td>
                 <td>{{ $s->name }}</td>
                 <td><code>{{ $s->nim ?? '-' }}</code></td>
                 <td>{{ $s->kelas ?? '-' }}</td>
-                <td>{{ $detectedAngkatan }}</td>
+                <td>{{ $s->angkatan ?? 'Lainnya' }}</td>
                 <td>{{ $s->email }}</td>
                 <td>{{ $s->created_at->format('d-m-Y') }}</td>
                 <td class="text-nowrap">

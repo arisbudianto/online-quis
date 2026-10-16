@@ -28,7 +28,7 @@ class SemesterRecapExport implements FromArray, WithHeadings, WithStyles, WithTi
     public function headings(): array
     {
         return array_merge(
-            ['NIM', 'Nama', 'Kelas'],
+            ['NIM', 'Nama', 'Kelas', 'Angkatan'],
             $this->recap['quizzes']->pluck('title')->all(),
             ['Nilai Akhir', 'Huruf', 'Bobot', 'Keterangan'],
         );
@@ -48,7 +48,7 @@ class SemesterRecapExport implements FromArray, WithHeadings, WithStyles, WithTi
             }
 
             return array_merge(
-                [$row['student']->nim, $row['student']->name, $row['student']->kelas],
+                [$row['student']->nim, $row['student']->name, $row['student']->kelas, $row['student']->angkatan ?? 'Lainnya'],
                 $cells,
                 [
                     $row['final'],

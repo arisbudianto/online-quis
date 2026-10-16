@@ -46,6 +46,17 @@ class User extends Authenticatable implements MustVerifyEmail
         'email_verified_at' => 'datetime',
     ];
 
+    /** Tahun angkatan dari awalan NIM, null bila tidak dikenali. */
+    public function getAngkatanAttribute(): ?string
+    {
+        return \App\Support\Angkatan::detect($this->nim);
+    }
+
+    public function scopeAngkatan($query, ?string $angkatan)
+    {
+        return \App\Support\Angkatan::apply($query, $angkatan, $query->getModel()->qualifyColumn('nim'));
+    }
+
     public function isDosen(): bool
     {
         return $this->role === 'dosen' || $this->role === 'admin';

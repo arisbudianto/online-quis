@@ -3,7 +3,7 @@
 
 @php
     $fmt = fn ($v) => $v === null ? '–' : rtrim(rtrim(number_format($v, 2, ',', '.'), '0'), ',');
-    $params = fn () => array_filter(['periode' => $period?->id, 'mk' => $course?->id, 'kelas' => $kelas]);
+    $params = fn () => array_filter(['periode' => $period?->id, 'mk' => $course?->id, 'kelas' => $kelas, 'angkatan' => $angkatan]);
 @endphp
 
 @section('content')
@@ -16,7 +16,7 @@
 </div>
 
 <form method="GET" action="{{ route('dosen.recap.analytics') }}" class="row g-2 align-items-end mb-3">
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <label class="form-label small mb-1">Periode</label>
         <select name="periode" class="form-select form-select-sm">
             @foreach ($periods as $p)
@@ -24,7 +24,7 @@
             @endforeach
         </select>
     </div>
-    <div class="col-sm-4">
+    <div class="col-sm-3">
         <label class="form-label small mb-1">Mata Kuliah</label>
         <select name="mk" class="form-select form-select-sm">
             <option value="">Pilih mata kuliah</option>
@@ -39,6 +39,15 @@
             <option value="">Semua</option>
             @foreach (($recap['kelasOptions'] ?? []) as $k)
                 <option value="{{ $k }}" @selected($kelas === $k)>{{ $k }}</option>
+            @endforeach
+        </select>
+    </div>
+    <div class="col-sm-2">
+        <label class="form-label small mb-1">Angkatan</label>
+        <select name="angkatan" class="form-select form-select-sm">
+            <option value="">Semua</option>
+            @foreach (($recap['angkatanOptions'] ?? \App\Support\Angkatan::options()) as $a => $aLabel)
+                <option value="{{ $a }}" @selected($angkatan === (string) $a)>{{ $aLabel }}</option>
             @endforeach
         </select>
     </div>
@@ -59,7 +68,7 @@
     @php $s = $stats['summary']['stats']; @endphp
 
     <p class="text-muted small mb-3">
-        {{ $course->name }} · {{ $period->label }}{{ $kelas ? ' · Kelas ' . $kelas : '' }} ·
+        {{ $course->name }} · {{ $period->label }}{{ $kelas ? ' · Kelas ' . $kelas : '' }}{{ $angkatan ? ' · Angkatan ' . \App\Support\Angkatan::label($angkatan) : '' }} ·
         {{ $stats['summary']['quizzes'] }} kuis · {{ $stats['summary']['participants'] }} peserta
         @if ($stats['summary']['pending'] > 0)
             · <span class="text-warning">{{ $stats['summary']['pending'] }} belum final (esai belum dinilai), tidak ikut statistik nilai akhir</span>
@@ -212,7 +221,7 @@
             <div class="table-responsive">
                 <table class="table table-sm table-bordered align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>NIM</th><th>Nama</th><th>Kelas</th><th class="text-center">Nilai Akhir</th><th class="text-center">Huruf</th><th>Keterangan</th></tr>
+                        <tr><th>NIM</th><th>Nama</th><th>Kelas</th><th>Angkatan</th><th class="text-center">Nilai Akhir</th><th class="text-center">Huruf</th><th>Keterangan</th></tr>
                     </thead>
                     <tbody>
                         @foreach ($stats['attention'] as $a)
@@ -220,6 +229,7 @@
                                 <td>{{ $a['student']->nim }}</td>
                                 <td>{{ $a['student']->name }}</td>
                                 <td>{{ $a['student']->kelas }}</td>
+                                <td>{{ $a['student']->angkatan ?? 'Lainnya' }}</td>
                                 <td class="text-center">{{ $fmt($a['final']) }}</td>
                                 <td class="text-center fw-bold">{{ $a['letter'] }}</td>
                                 <td class="small">

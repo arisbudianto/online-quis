@@ -76,20 +76,21 @@ class CourseEnrollmentTest extends TestCase
         $this->assertSame(2, CourseEnrollment::count());
     }
 
-    public function test_add_by_kelas_with_nim_prefix(): void
+    public function test_add_by_kelas_with_angkatan(): void
     {
-        $this->mhs('K3526001', 'A');
+        $this->mhs('K3524001', 'A');
         $this->mhs('K3525001', 'A');
-        $this->mhs('K3526002', 'B');
+        $this->mhs('K3524002', 'B');
 
         $this->actingAs($this->dosen)
             ->post(route('dosen.enrollments.storeKelas', $this->course), [
                 'academic_period_id' => $this->period->id,
                 'kelas' => 'A',
-                'nim_prefix' => 'k3526',
-            ]);
+                'angkatan' => '2024',
+            ])
+            ->assertSessionHas('status', '1 mahasiswa kelas A angkatan 2024 ditambahkan dari 1 yang cocok.');
 
-        $this->assertSame(['K3526001'], $this->enrolledNims());
+        $this->assertSame(['K3524001'], $this->enrolledNims());
 
         $this->actingAs($this->dosen)
             ->post(route('dosen.enrollments.storeKelas', $this->course), [
@@ -97,7 +98,7 @@ class CourseEnrollmentTest extends TestCase
                 'kelas' => 'A',
             ]);
 
-        $this->assertSame(['K3525001', 'K3526001'], $this->enrolledNims());
+        $this->assertSame(['K3524001', 'K3525001'], $this->enrolledNims());
     }
 
     public function test_enrollment_is_per_period(): void
@@ -175,7 +176,7 @@ class CourseEnrollmentTest extends TestCase
         $this->mhs('K3526002X', 'B')->update(['role' => 'dosen']);
 
         $this->actingAs($this->dosen)->get(route('dosen.enrollments.index', $this->course))
-            ->assertOk()->assertSee('Daftarkan semua mahasiswa kelas A, B, C')->assertSee('total 4');
+            ->assertOk()->assertSee('Daftarkan semua mahasiswa kelas A, B, C')->assertSee('Mahasiswa aplikasi menurut angkatan dan kelas');
 
         $this->actingAs($this->dosen)
             ->post(route('dosen.enrollments.storeAllKelas', $this->course), ['academic_period_id' => $this->period->id])
@@ -190,19 +191,51 @@ class CourseEnrollmentTest extends TestCase
         $this->assertSame(4, CourseEnrollment::count());
     }
 
-    public function test_add_all_kelas_with_nim_prefix_limits_to_one_angkatan(): void
+    public function test_add_all_kelas_with_angkatan_limits_to_one_angkatan(): void
     {
-        $this->mhs('K3526001', 'A');
-        $this->mhs('K3526002', 'C');
+        $this->mhs('51106102610001', 'A');
+        $this->mhs('21106232610002', 'C');
         $this->mhs('K3525003', 'B');
 
         $this->actingAs($this->dosen)
             ->post(route('dosen.enrollments.storeAllKelas', $this->course), [
-                'academic_period_id' => $this->period->id, 'nim_prefix' => 'k3526',
+                'academic_period_id' => $this->period->id, 'angkatan' => '2026',
             ])
-            ->assertSessionHas('status', '2 mahasiswa kelas A, B, C dengan awalan NIM K3526 ditambahkan dari 2 yang cocok.');
+            ->assertSessionHas('status', '2 mahasiswa kelas A, B, C angkatan 2026 ditambahkan dari 2 yang cocok.');
 
-        $this->assertSame(['K3526001', 'K3526002'], $this->enrolledNims());
+        $this->assertSame(['21106232610002', '51106102610001'], $this->enrolledNims());
+    }
+
+    public function test_add_all_kelas_rejects_unknown_angkatan(): void
+    {
+        $this->actingAs($this->dosen)
+            ->post(route('dosen.enrollments.storeAllKelas', $this->course), [
+                'academic_period_id' => $this->period->id, 'angkatan' => '1999',
+            ])
+            ->assertSessionHasErrors('angkatan');
+
+        $this->assertSame(0, CourseEnrollment::count());
+    }
+
+    public function test_page_shows_angkatan_counts_and_filters_participants(): void
+    {
+        $a = $this->mhs('K3524001', 'A');
+        $b = $this->mhs('K3525001', 'B');
+        foreach ([$a, $b] as $s) {
+            CourseEnrollment::create(['course_id' => $this->course->id, 'academic_period_id' => $this->period->id, 'user_id' => $s->id]);
+        }
+
+        $this->actingAs($this->dosen)
+            ->get(route('dosen.enrollments.index', $this->course))
+            ->assertOk()
+            ->assertSee('K3524001')->assertSee('K3525001');
+
+        $this->actingAs($this->dosen)
+            ->get(route('dosen.enrollments.index', [$this->course, 'angkatan' => '2025']))
+            ->assertOk()
+            ->assertSee('K3525001')
+            ->assertDontSee('K3524001')
+            ->assertSee('1 peserta terdaftar di 2026/2027 Ganjil, angkatan 2025.');
     }
 
     public function test_other_dosen_cannot_add_all_kelas(): void

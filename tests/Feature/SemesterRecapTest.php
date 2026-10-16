@@ -298,9 +298,9 @@ class SemesterRecapTest extends TestCase
             ->assertOk();
 
         Excel::assertDownloaded('rekap-basis-data-2026-ganjil.xlsx', function (SemesterRecapExport $export) {
-            $this->assertSame(['NIM', 'Nama', 'Kelas', 'Q1', 'Q2', 'Nilai Akhir', 'Huruf', 'Bobot', 'Keterangan'], $export->headings());
+            $this->assertSame(['NIM', 'Nama', 'Kelas', 'Angkatan', 'Q1', 'Q2', 'Nilai Akhir', 'Huruf', 'Bobot', 'Keterangan'], $export->headings());
             $this->assertSame(
-                [['K3526060', 'Mhs K3526060', 'A', 80.0, 'Tidak mengerjakan', 40.0, 'E', 0.0, 'Final']],
+                [['K3526060', 'Mhs K3526060', 'A', 'Lainnya', 80.0, 'Tidak mengerjakan', 40.0, 'E', 0.0, 'Final']],
                 $export->array()
             );
             return true;
