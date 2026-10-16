@@ -25,6 +25,14 @@ return [
         'token' => env('POSTMARK_TOKEN'),
     ],
 
+    // Login dengan Google (OAuth 2.0 / OpenID Connect). Kosongkan client_id
+    // untuk mematikan tombol Google tanpa mengubah kode.
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID'),
+        'client_secret' => env('GOOGLE_CLIENT_SECRET'),
+        'redirect' => env('GOOGLE_REDIRECT_URI', rtrim((string) env('APP_URL'), '/') . '/auth/google/callback'),
+    ],
+
     'ses' => [
         'key' => env('AWS_ACCESS_KEY_ID'),
         'secret' => env('AWS_SECRET_ACCESS_KEY'),

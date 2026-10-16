@@ -17,6 +17,15 @@
 
         <hr class="my-6 border-gray-200">
 
+        @if (\App\Support\GoogleOAuth::enabled())
+            <x-google-button label="Verifikasi dengan Google" />
+            <p class="mt-2 text-sm text-gray-600">
+                Pilih akun Google dengan email {{ auth()->user()->email }}. Email langsung terverifikasi tanpa menunggu link.
+            </p>
+            <x-input-error :messages="$errors->get('google')" class="mt-2" />
+            <p class="mt-5 mb-4 text-center text-xs font-bold uppercase tracking-wide text-gray-500">atau lewat link email</p>
+        @endif
+
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <form method="POST" action="{{ route('verification.send') }}">
                 @csrf

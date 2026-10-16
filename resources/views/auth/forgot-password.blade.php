@@ -2,11 +2,17 @@
     <div class="mx-auto flex min-h-[calc(100vh-152px)] max-w-md flex-col justify-center px-6 py-14 sm:px-0">
         <p class="text-xs font-bold uppercase tracking-wide text-[#DC3B1C]">Reset password</p>
         <h1 class="mt-2 text-3xl font-extrabold leading-tight text-[#111111] sm:text-4xl">
-            Forgot your password?
+            Lupa password?
         </h1>
         <p class="mt-3 text-sm leading-relaxed text-gray-600">
-            No problem. Let us know your email address and we will email you a password reset link.
+            Masukkan email akun Anda. Kami kirim link untuk membuat password baru. Akun yang dibuat dengan
+            Google juga bisa memakai cara ini untuk membuat password.
         </p>
+        @if (\App\Support\GoogleOAuth::enabled())
+            <div class="mt-5">
+                <x-google-button label="Masuk dengan Google tanpa password" />
+            </div>
+        @endif
 
         <hr class="my-6 border-gray-200">
 
@@ -22,7 +28,7 @@
             </div>
 
             <button type="submit" class="inline-flex w-full items-center justify-between rounded-none bg-black px-5 py-3 text-sm font-bold text-white transition hover:bg-[#DC3B1C]">
-                <span>Email Password Reset Link</span>
+                <span>Kirim link reset password</span>
                 <span aria-hidden="true">&rarr;</span>
             </button>
 

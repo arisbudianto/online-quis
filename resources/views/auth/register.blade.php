@@ -10,6 +10,13 @@
 
         <hr class="my-6 border-gray-200">
 
+        @if (\App\Support\GoogleOAuth::enabled())
+            <x-google-button label="Daftar dengan Google" />
+            <x-input-error :messages="$errors->get('google')" class="mt-2" />
+            <p class="mt-2 text-sm text-gray-600">Email langsung terverifikasi. Anda tinggal mengisi NIM dan kelas.</p>
+            <p class="mt-5 mb-4 text-center text-xs font-bold uppercase tracking-wide text-gray-500">atau isi formulir</p>
+        @endif
+
         <form method="POST" action="{{ route('register') }}" class="space-y-5">
             @csrf
 

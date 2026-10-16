@@ -16,6 +16,12 @@
 
                 <x-auth-session-status class="mb-4" :status="session('status')" />
 
+                @if (\App\Support\GoogleOAuth::enabled())
+                    <x-google-button label="Masuk atau daftar dengan Google" />
+                    <x-input-error :messages="$errors->get('google')" class="mt-2" />
+                    <p class="mt-5 mb-4 text-center text-xs font-bold uppercase tracking-wide text-gray-500">atau dengan email</p>
+                @endif
+
                 <form method="POST" action="{{ route('login') }}" class="space-y-5">
                     @csrf
 
@@ -39,7 +45,7 @@
 
                         @if (Route::has('password.request'))
                             <a class="text-sm font-semibold text-[#DC3B1C] underline" href="{{ route('password.request') }}">
-                                Forgot your password?
+                                Lupa password?
                             </a>
                         @endif
                     </div>
