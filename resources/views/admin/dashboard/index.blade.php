@@ -49,6 +49,20 @@
 
 <div class="row">
     <div class="col-md-4 mb-3">
+        <div class="card h-100 {{ $stats['dosen_pending'] > 0 ? 'border-warning' : '' }}">
+            <div class="card-body">
+                <h5>
+                    Verifikasi Dosen / Guru
+                    @if ($stats['dosen_pending'] > 0)
+                        <span class="badge bg-warning text-dark">{{ $stats['dosen_pending'] }} baru</span>
+                    @endif
+                </h5>
+                <p class="text-muted small">Setujui atau tolak dosen/guru yang mendaftar sendiri. Sebelum disetujui mereka belum bisa membuat kuis.</p>
+                <a href="{{ route('admin.lecturers.index') }}#menunggu" class="btn btn-warning btn-sm">Periksa pendaftar →</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
         <div class="card h-100">
             <div class="card-body">
                 <h5>Kelola Dosen</h5>

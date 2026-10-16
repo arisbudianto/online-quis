@@ -23,7 +23,12 @@
             @auth
                 <div class="d-flex text-light align-items-center gap-3">
                     @if (auth()->user()->role === 'admin')
+                        @php($dosenMenunggu = \App\Models\User::where('role', 'dosen')->whereNull('approved_at')->count())
                         <a href="{{ route('admin.dashboard') }}" class="btn btn-sm btn-outline-light">⚙ Admin</a>
+                        @if ($dosenMenunggu > 0)
+                            <a href="{{ route('admin.lecturers.index') }}#menunggu" class="btn btn-sm btn-warning"
+                               title="Dosen/guru baru menunggu persetujuan">{{ $dosenMenunggu }} dosen/guru menunggu</a>
+                        @endif
                     @endif
                     @if (auth()->user()->role === 'mahasiswa')
                         <div class="dropdown">

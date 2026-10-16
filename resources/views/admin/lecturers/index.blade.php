@@ -11,7 +11,7 @@
     <div class="alert alert-success">{{ session('status') }}</div>
 @endif
 
-<div class="card mb-4 {{ $pending->isNotEmpty() ? 'border-warning' : '' }}">
+<div id="menunggu" class="card mb-4 {{ $pending->isNotEmpty() ? 'border-warning' : '' }}">
     <div class="card-header">Menunggu persetujuan ({{ $pending->count() }})</div>
     @if ($pending->isEmpty())
         <div class="card-body text-muted">Tidak ada pendaftaran dosen/guru baru.</div>

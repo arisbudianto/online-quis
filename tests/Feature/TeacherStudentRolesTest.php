@@ -56,7 +56,10 @@ class TeacherStudentRolesTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->get(route('admin.lecturers.index'))->assertOk()
             ->assertSee('Menunggu persetujuan (1)')->assertSee('SMA Harapan Bangsa');
-        $this->actingAs($admin)->get(route('admin.dashboard'))->assertSee('1 pendaftaran dosen/guru menunggu persetujuan');
+        $this->actingAs($admin)->get(route('admin.dashboard'))
+            ->assertSee('1 pendaftaran dosen/guru menunggu persetujuan')
+            ->assertSee('Verifikasi Dosen / Guru')
+            ->assertSee('1 dosen/guru menunggu');
 
         $this->actingAs($admin)->post(route('admin.lecturers.approve', $guru))->assertSessionHas('status');
         $this->assertFalse($guru->fresh()->isPendingApproval());
