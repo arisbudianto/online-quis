@@ -11,8 +11,15 @@
         @unless ($session->isFinished())
             <a href="{{ route('dosen.live.show', $session) }}" class="btn btn-primary btn-sm">Buka layar</a>
         @endunless
+        <a href="{{ route('live.board', $session->code) }}" target="_blank" rel="noopener" class="btn btn-outline-dark btn-sm">Papan bersama</a>
         <a href="{{ route('dosen.live.export', $session) }}" class="btn btn-success btn-sm">Unduh Excel</a>
         <a href="{{ route('dosen.live.index') }}" class="btn btn-outline-secondary btn-sm">← Kuis Interaktif</a>
+        <form method="POST" action="{{ route('dosen.live.destroy', $session) }}" class="d-inline"
+              onsubmit="return confirm('Hapus sesi ini beserta semua peserta dan jawabannya? Tidak bisa dikembalikan.')">
+            @csrf
+            @method('DELETE')
+            <button class="btn btn-outline-danger btn-sm">Hapus</button>
+        </form>
     </div>
 </div>
 

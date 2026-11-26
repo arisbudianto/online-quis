@@ -12,7 +12,8 @@
             <img src="{{ route('dosen.live.qr', $session) }}" alt="QR gabung" style="width:100%;max-width:320px">
             <div class="kode-besar">{{ $session->code }}</div>
             <p class="kecil">{{ $session->questionCount() }} soal · {{ $session->seconds_per_question }} detik per soal</p>
-            <p class="kecil">Papan peringkat bersama: {{ preg_replace('#^https?://#', '', route('live.board', $session->code)) }}</p>
+                <a class="btn putih" style="padding:8px 14px;font-size:14px;margin:8px 0" href="{{ route('live.board', $session->code) }}" target="_blank" rel="noopener">Buka papan bersama</a>
+                <p class="kecil">Untuk TV atau layar kedua, tanpa login: {{ preg_replace('#^https?://#', '', route('live.board', $session->code)) }}</p>
             @if ($session->isFinished())
                 <p><strong>Tantangan sudah ditutup.</strong></p>
                 <a class="btn penuh" href="{{ route('dosen.live.results', $session) }}">Hasil lengkap</a>

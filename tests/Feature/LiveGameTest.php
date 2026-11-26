@@ -441,4 +441,36 @@ class LiveGameTest extends TestCase
         $this->actingAs($this->dosen)->getJson(route('dosen.live.status', $s))
             ->assertJsonPath('awards.0.title', 'Juara 1');
     }
+
+    public function test_host_deletes_session_with_players_answers_and_state_file(): void
+    {
+        $s = $this->newSession();
+        $p = $this->joinAsGuest($s, 'Budi');
+        $file = $this->dir . '/' . $s->state_token . '.json';
+        $this->assertFileExists($file);
+
+        $this->actingAs($this->dosen)->get(route('dosen.live.index'))->assertOk()
+            ->assertSee(route('live.board', $s->code))->assertSee('Hapus');
+
+        $lain = $this->makeTeacher();
+        $this->actingAs($lain)->delete(route('dosen.live.destroy', $s))->assertForbidden();
+        $this->assertNotNull($s->fresh());
+
+        $this->actingAs($this->dosen)->delete(route('dosen.live.destroy', $s))
+            ->assertRedirect(route('dosen.live.index'))->assertSessionHas('status');
+
+        $this->assertNull($s->fresh());
+        $this->assertNull($p->fresh());
+        $this->assertFileDoesNotExist($file);
+        $this->assertNotNull($this->quiz->fresh(), 'kuis aslinya tidak ikut terhapus');
+        $this->get(route('live.board', $s->code))->assertNotFound();
+    }
+
+    public function test_host_screens_link_to_shared_board(): void
+    {
+        $live = $this->newSession('live');
+        $this->actingAs($this->dosen)->get(route('dosen.live.show', $live))->assertSee('Buka papan bersama')
+            ->assertSee(route('live.board', $live->code));
+        $this->actingAs($this->dosen)->get(route('dosen.live.results', $live))->assertSee('Papan bersama');
+    }
 }

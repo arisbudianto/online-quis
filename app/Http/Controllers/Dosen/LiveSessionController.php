@@ -194,6 +194,18 @@ class LiveSessionController extends Controller
         return Excel::download(new LiveSessionExport($session), $name);
     }
 
+    /** Hapus sesi beserta peserta dan jawabannya (data latihan, tidak masuk nilai). */
+    public function destroy(Request $request, LiveSession $session)
+    {
+        $this->authorizeSession($request, $session);
+
+        $label = $session->modeLabel() . ' ' . $session->code;
+        app(LiveStateFile::class)->delete($session->state_token);
+        $session->delete(); // peserta dan jawaban ikut terhapus (cascade)
+
+        return redirect()->route('dosen.live.index')->with('status', "Sesi {$label} dihapus.");
+    }
+
     private function ok(LiveSession $session): JsonResponse
     {
         $session->refresh();

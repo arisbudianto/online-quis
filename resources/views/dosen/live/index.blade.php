@@ -27,6 +27,10 @@
     </div>
 </div>
 
+@if (session('status'))
+    <div class="alert alert-success">{{ session('status') }}</div>
+@endif
+
 <div class="table-responsive">
 <table class="table table-bordered bg-white align-middle">
     <thead class="table-light">
@@ -45,7 +49,15 @@
                     @unless ($s->isFinished())
                         <a href="{{ route('dosen.live.show', $s) }}" class="btn btn-sm btn-primary">Buka layar</a>
                     @endunless
+                    <a href="{{ route('live.board', $s->code) }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-dark"
+                       title="Papan peringkat bersama untuk TV/proyektor; bisa dibuka tanpa login">Papan</a>
                     <a href="{{ route('dosen.live.results', $s) }}" class="btn btn-sm btn-outline-success">Hasil</a>
+                    <form method="POST" action="{{ route('dosen.live.destroy', $s) }}" class="d-inline"
+                          onsubmit="return confirm('Hapus sesi {{ $s->modeLabel() }} {{ $s->code }} beserta {{ $s->players_count }} peserta dan jawabannya? Tidak bisa dikembalikan.')">
+                        @csrf
+                        @method('DELETE')
+                        <button class="btn btn-sm btn-outline-danger">Hapus</button>
+                    </form>
                 </td>
             </tr>
         @empty

@@ -110,6 +110,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('interaktif/{session}/keluarkan/{player}', [LiveSessionController::class, 'kick'])->name('live.kick');
         Route::get('interaktif/{session}/hasil', [LiveSessionController::class, 'results'])->name('live.results');
         Route::get('interaktif/{session}/export', [LiveSessionController::class, 'export'])->name('live.export');
+        Route::delete('interaktif/{session}', [LiveSessionController::class, 'destroy'])->name('live.destroy');
         // Daftar kelas milik dosen
         Route::get('kelas', [TeacherClassController::class, 'index'])->name('classes.index');
         Route::post('kelas', [TeacherClassController::class, 'store'])->name('classes.store');

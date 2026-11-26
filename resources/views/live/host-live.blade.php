@@ -5,6 +5,7 @@
     <span>{{ $session->quiz->title ?? 'Kuis' }} <small>· Live · {{ $session->code }}</small></span>
     <span style="display:flex;gap:8px">
         <small id="info-peserta">0 peserta</small>
+        <a class="btn putih" style="padding:6px 12px;font-size:13px" href="{{ route('live.board', $session->code) }}" target="_blank" rel="noopener">Papan</a>
         <a class="btn putih" style="padding:6px 12px;font-size:13px" href="{{ route('dosen.live.index') }}">Keluar layar</a>
     </span>
 </div>
@@ -16,7 +17,8 @@
                 <p>Scan QR atau buka <strong>{{ preg_replace('#^https?://#', '', route('live.enter')) }}</strong></p>
                 <img src="{{ route('dosen.live.qr', $session) }}" alt="QR gabung" style="width:100%;max-width:340px">
                 <div class="kode-besar">{{ $session->code }}</div>
-                <p class="kecil">Papan peringkat bersama: {{ preg_replace('#^https?://#', '', route('live.board', $session->code)) }}</p>
+                <a class="btn putih" style="padding:8px 14px;font-size:14px;margin:8px 0" href="{{ route('live.board', $session->code) }}" target="_blank" rel="noopener">Buka papan bersama</a>
+                <p class="kecil">Untuk TV atau layar kedua, tanpa login: {{ preg_replace('#^https?://#', '', route('live.board', $session->code)) }}</p>
             </div>
             <div class="kartu">
                 <h2><span id="jml-lobby">0</span> peserta</h2>
