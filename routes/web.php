@@ -58,6 +58,8 @@ Route::prefix('main')->name('live.')->group(function () {
     Route::get('{code}/soal', [LivePlayController::class, 'challengeQuestion'])->name('challenge.question');
     Route::post('{code}/tantangan/jawab', [LivePlayController::class, 'challengeAnswer'])->name('challenge.answer');
     Route::get('{code}/peringkat', [LivePlayController::class, 'leaderboard'])->name('leaderboard');
+    Route::get('{code}/papan', [LivePlayController::class, 'board'])->name('board');
+    Route::get('{code}/papan/data', [LivePlayController::class, 'boardData'])->name('board.data');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

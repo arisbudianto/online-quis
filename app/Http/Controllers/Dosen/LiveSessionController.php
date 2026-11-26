@@ -106,6 +106,7 @@ class LiveSessionController extends Controller
                 ? LiveAnswer::where('live_session_id', $session->id)->where('question_id', $questionId)->count()
                 : null,
             'leaderboard' => $session->isLive() ? null : $this->game->leaderboard($session),
+            'awards' => !$session->isLive() && $session->isFinished() ? $this->game->awards($session) : [],
             'total' => $session->questionCount(),
         ])->header('Cache-Control', 'no-store');
     }

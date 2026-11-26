@@ -436,6 +436,8 @@ class LiveGameService
             $query->limit($limit);
         }
 
+        $stars = $this->stars($session)['byPlayer'];
+
         return $query->get()->values()->map(fn (LivePlayer $p, $i) => [
             'rank' => $i + 1,
             'id' => $p->id,
@@ -443,9 +445,86 @@ class LiveGameService
             'score' => $p->score,
             'correct' => $p->correct_count,
             'answered' => $p->answered_count,
+            'stars' => $stars[$p->id] ?? 0,
+            'best_streak' => $p->best_streak,
             'progress' => $p->current_index,
             'finished' => $p->finished_at !== null,
         ])->all();
+    }
+
+    /**
+     * Bintang: satu untuk penjawab benar tercepat di setiap soal.
+     * Pada mode live, soal yang masih berjalan belum dihitung supaya
+     * bintang tidak membocorkan jawaban sebelum soal ditutup.
+     *
+     * @return array{byPlayer: array<int, int>, byQuestion: array<int, array{player_id: int, ms: int}>}
+     */
+    public function stars(LiveSession $session): array
+    {
+        $exclude = $session->isLive() && $session->status === 'question' ? $this->currentQuestionId($session) : null;
+
+        $rows = LiveAnswer::where('live_session_id', $session->id)
+            ->where('is_correct', true)
+            ->when($exclude, fn ($q) => $q->where('question_id', '!=', $exclude))
+            ->orderBy('question_id')->orderBy('response_ms')->orderBy('id')
+            ->get(['question_id', 'live_player_id', 'response_ms']);
+
+        $byQuestion = [];
+        $byPlayer = [];
+        foreach ($rows as $r) {
+            if (isset($byQuestion[$r->question_id])) {
+                continue;
+            }
+            $byQuestion[$r->question_id] = ['player_id' => $r->live_player_id, 'ms' => (int) $r->response_ms];
+            $byPlayer[$r->live_player_id] = ($byPlayer[$r->live_player_id] ?? 0) + 1;
+        }
+
+        return ['byPlayer' => $byPlayer, 'byQuestion' => $byQuestion];
+    }
+
+    /**
+     * Penghargaan akhir sesi untuk layar bersama.
+     *
+     * @return array<int, array{key: string, title: string, player_id: int, nickname: string, detail: string}>
+     */
+    public function awards(LiveSession $session): array
+    {
+        $board = collect($this->leaderboard($session));
+        if ($board->isEmpty()) {
+            return [];
+        }
+
+        $awards = [];
+        foreach ($board->take(3) as $p) {
+            if ($p['score'] > 0) {
+                $awards[] = ['key' => 'juara' . $p['rank'], 'title' => 'Juara ' . $p['rank'], 'player_id' => $p['id'],
+                    'nickname' => $p['nickname'], 'detail' => $p['score'] . ' poin'];
+            }
+        }
+
+        // Urutan papan sudah memecah seri (skor, lalu waktu), jadi pemenang
+        // kategori = yang nilainya tertinggi dan posisinya paling atas.
+        $pick = fn (string $field) => $board->sortBy([[$field, 'desc'], ['rank', 'asc']])->first();
+
+        $fast = $pick('stars');
+        if ($fast && $fast['stars'] > 0) {
+            $awards[] = ['key' => 'tercepat', 'title' => 'Paling Cepat', 'player_id' => $fast['id'],
+                'nickname' => $fast['nickname'], 'detail' => $fast['stars'] . ' bintang tercepat'];
+        }
+
+        $streak = $pick('best_streak');
+        if ($streak && $streak['best_streak'] >= 2) {
+            $awards[] = ['key' => 'beruntun', 'title' => 'Beruntun Terpanjang', 'player_id' => $streak['id'],
+                'nickname' => $streak['nickname'], 'detail' => $streak['best_streak'] . ' benar berturut-turut'];
+        }
+
+        $careful = $pick('correct');
+        if ($careful && $careful['correct'] > 0) {
+            $awards[] = ['key' => 'teliti', 'title' => 'Paling Teliti', 'player_id' => $careful['id'],
+                'nickname' => $careful['nickname'], 'detail' => $careful['correct'] . ' jawaban benar'];
+        }
+
+        return $awards;
     }
 
     public function rankOf(LiveSession $session, LivePlayer $player): int
@@ -488,16 +567,39 @@ class LiveGameService
                 ->selectRaw('option_id, count(*) as n')->groupBy('option_id')
                 ->pluck('n', 'option_id');
 
+            // Rekap jawaban benar soal ini, urut dari yang tercepat.
+            $correctPlayers = LiveAnswer::where('live_answers.live_session_id', $session->id)
+                ->where('live_answers.question_id', $questionId)->where('live_answers.is_correct', true)
+                ->join('live_players', 'live_players.id', '=', 'live_answers.live_player_id')
+                ->orderBy('live_answers.response_ms')->orderBy('live_answers.id')
+                ->get(['live_players.id as player_id', 'live_players.nickname', 'live_answers.response_ms', 'live_answers.points']);
+
+            $top = $this->leaderboard($session, 5);
+
             $payload['reveal'] = [
                 'correct_option_id' => $this->correctOptionId($questionId),
                 'counts' => collect($step['o'])->mapWithKeys(fn ($id) => [(string) $id => (int) ($counts[$id] ?? 0)])->all(),
                 'answered' => (int) $counts->sum(),
-                'top' => $this->leaderboard($session, 5),
+                'correct_count' => $correctPlayers->count(),
+                'correct_players' => $correctPlayers->take(60)->map(fn ($r) => [
+                    'id' => (int) $r->player_id,
+                    'nickname' => $r->nickname,
+                    'seconds' => round($r->response_ms / 1000, 1),
+                    'points' => (int) $r->points,
+                ])->values()->all(),
+                'fastest' => $correctPlayers->isNotEmpty() ? [
+                    'id' => (int) $correctPlayers[0]->player_id,
+                    'nickname' => $correctPlayers[0]->nickname,
+                    'seconds' => round($correctPlayers[0]->response_ms / 1000, 1),
+                ] : null,
+                'leader' => $top[0] ?? null,
+                'top' => $top,
             ];
         }
 
         if ($session->status === 'finished') {
             $payload['top'] = $this->leaderboard($session, 10);
+            $payload['awards'] = $this->awards($session);
         }
 
         return $payload;

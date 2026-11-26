@@ -353,4 +353,92 @@ class LiveGameTest extends TestCase
         $this->assertFileDoesNotExist($old);
         $this->assertFileExists($this->dir . '/' . $s->state_token . '.json');
     }
+
+    public function test_reveal_compiles_correct_answers_star_leader_and_final_awards(): void
+    {
+        Carbon::setTestNow('2026-11-27 10:00:00');
+        $s = $this->newSession('live', 20);
+        $budi = $this->joinAsGuest($s, 'Budi');
+        $cici = $this->joinAsGuest($s, 'Cici');
+        $dodi = $this->joinAsGuest($s, 'Dodi');
+
+        $this->actingAs($this->dosen)->postJson(route('dosen.live.start', $s));
+        auth()->logout();
+
+        for ($round = 0; $round < 3; $round++) {
+            $q = $this->state($s)['question'];
+            $key = $this->keys[$q['id']];
+            $wrong = collect($q['options'])->pluck('id')->first(fn ($id) => $id !== $key);
+            Carbon::setTestNow(now()->addSeconds(3));
+            // Cici selalu tercepat dan benar; Budi benar tapi lebih lambat; Dodi salah di soal 1 saja.
+            $this->asPlayer($cici)->postJson(route('live.answer', $s->code), ['question_id' => $q['id'], 'option_id' => $key, 'elapsed_ms' => 2000]);
+            Carbon::setTestNow(now()->addSeconds(3));
+            $this->asPlayer($budi)->postJson(route('live.answer', $s->code), ['question_id' => $q['id'], 'option_id' => $key, 'elapsed_ms' => 5000]);
+            $this->asPlayer($dodi)->postJson(route('live.answer', $s->code), ['question_id' => $q['id'], 'option_id' => $round === 0 ? $wrong : $key, 'elapsed_ms' => 5900]);
+
+            // Selama soal berjalan, bintang soal ini belum terlihat.
+            if ($round === 0) {
+                $this->assertSame([], $this->game()->stars($s->fresh())['byPlayer']);
+            }
+
+            $this->actingAs($this->dosen)->postJson(route('dosen.live.reveal', $s));
+            auth()->logout();
+            $r = $this->state($s)['reveal'];
+
+            if ($round === 0) {
+                $this->assertSame(2, $r['correct_count']);
+                $this->assertSame(['Cici', 'Budi'], collect($r['correct_players'])->pluck('nickname')->all());
+                $this->assertSame('Cici', $r['fastest']['nickname']);
+                $this->assertSame('Cici', $r['leader']['nickname']);
+                $this->assertSame(1, $r['leader']['stars']);
+
+                $this->asPlayer($cici)->getJson(route('live.me', $s->code) . '?question_id=' . $q['id'])
+                    ->assertJson(['fastest' => true, 'stars' => 1]);
+                $this->asPlayer($budi)->getJson(route('live.me', $s->code) . '?question_id=' . $q['id'])
+                    ->assertJson(['fastest' => false, 'stars' => 0]);
+            }
+
+            $this->actingAs($this->dosen)->postJson(route('dosen.live.next', $s));
+            auth()->logout();
+        }
+
+        $final = $this->state($s);
+        $this->assertSame('finished', $final['status']);
+        $awards = collect($final['awards'])->keyBy('key');
+        $this->assertSame('Cici', $awards['juara1']['nickname']);
+        $this->assertSame('Cici', $awards['tercepat']['nickname']);
+        $this->assertSame('3 bintang tercepat', $awards['tercepat']['detail']);
+        $this->assertSame('Cici', $awards['beruntun']['nickname']);
+        $this->assertSame('Cici', $awards['teliti']['nickname']);
+        $this->assertSame(3, $final['top'][0]['stars']);
+
+        $mine = $this->asPlayer($cici)->getJson(route('live.me', $s->code))->json('awards');
+        $this->assertEqualsCanonicalizing(['Juara 1', 'Paling Cepat', 'Beruntun Terpanjang', 'Paling Teliti'], $mine);
+        $this->assertSame(['Juara 2'], $this->asPlayer($budi)->getJson(route('live.me', $s->code))->json('awards'));
+
+        // Papan bersama: terbuka tanpa bergabung.
+        $this->flushSession();
+        $this->get(route('live.board', $s->code))->assertOk()->assertSee('Papan peringkat');
+        $this->getJson(route('live.board.data', $s->code))->assertOk()
+            ->assertJsonPath('leaderboard.0.nickname', 'Cici')
+            ->assertJsonPath('leaderboard.0.stars', 3)
+            ->assertJsonPath('awards.0.title', 'Juara 1');
+    }
+
+    public function test_challenge_board_shows_stars_and_awards_after_close(): void
+    {
+        $s = $this->newSession('challenge', 30);
+        $eka = $this->joinAsGuest($s, 'Eka');
+
+        $d = $this->asPlayer($eka)->getJson(route('live.challenge.question', $s->code))->json();
+        $this->asPlayer($eka)->postJson(route('live.challenge.answer', $s->code), [
+            'question_id' => $d['question']['id'], 'option_id' => $this->keys[$d['question']['id']],
+        ]);
+
+        $this->actingAs($this->dosen)->getJson(route('dosen.live.status', $s))
+            ->assertJsonPath('leaderboard.0.stars', 1)->assertJsonPath('awards', []);
+        $this->actingAs($this->dosen)->post(route('dosen.live.finish', $s));
+        $this->actingAs($this->dosen)->getJson(route('dosen.live.status', $s))
+            ->assertJsonPath('awards.0.title', 'Juara 1');
+    }
 }

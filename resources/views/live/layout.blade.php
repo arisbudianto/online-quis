@@ -66,6 +66,14 @@
         .podium .p2 { min-height: 130px; border-top: 6px solid #8a8f98; }
         .podium .p3 { min-height: 100px; border-top: 6px solid #a0522d; }
         .batang { height: 22px; background: var(--garis); margin-top: 6px; }
+        .bintang { color: #C98A00; font-weight: 900; white-space: nowrap; }
+        .pemimpin { border-left: 6px solid #C98A00; }
+        .pemimpin .nama { font-size: 26px; font-weight: 900; }
+        .chip.cepat { border-color: #C98A00; background: #fff7e6; }
+        .penghargaan { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; text-align: center; }
+        .penghargaan > div { background: #fff; border: 1px solid var(--garis); border-top: 6px solid #C98A00; padding: 14px; }
+        .penghargaan .judul { font-size: 13px; font-weight: 800; color: var(--abu); text-transform: uppercase; letter-spacing: .04em; }
+        .penghargaan .nama { font-size: 22px; font-weight: 900; margin: 6px 0; }
         .batang > div { height: 100%; }
     </style>
 </head>
@@ -106,6 +114,15 @@
             },
             esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; },
             letter(i) { return 'ABCDEF'[i] || '?'; },
+            stars(n) { return n > 0 ? ' <span class="bintang" title="' + n + ' bintang tercepat">&#9733;' + (n > 1 ? n : '') + '</span>' : ''; },
+            boardRows(list, meId) {
+                return list.map(p => '<tr class="' + (p.id === meId ? 'saya' : '') + '"><td>' + p.rank + '</td><td>' + this.esc(p.nickname) +
+                    this.stars(p.stars) + '</td><td class="angka">' + p.score + '</td></tr>').join('');
+            },
+            awardCards(awards) {
+                return (awards || []).map(a => '<div><div class="judul">' + this.esc(a.title) + '</div><div class="nama">' +
+                    this.esc(a.nickname) + '</div><div class="kecil">' + this.esc(a.detail) + '</div></div>').join('');
+            },
         };
     </script>
     @yield('scripts')

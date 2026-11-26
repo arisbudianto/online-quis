@@ -30,6 +30,8 @@
     <div id="v-reveal" class="kartu tengah hidden">
         <div class="status-besar" id="hasil-judul"></div>
         <p id="hasil-detail"></p>
+        <p id="hasil-bintang" class="bintang"></p>
+        <p class="kecil" id="hasil-pemimpin"></p>
         <p class="kecil" id="hasil-kunci"></p>
     </div>
 
@@ -37,6 +39,7 @@
         <h2>Kuis selesai</h2>
         <div class="status-besar" id="akhir-peringkat"></div>
         <p id="akhir-detail"></p>
+        <div class="penghargaan" id="akhir-penghargaan"></div>
         <table class="papan" id="akhir-tabel" style="margin-top:12px"></table>
     </div>
 
@@ -139,6 +142,8 @@
                 $('hasil-judul').className = 'status-besar merahteks';
             }
             $('hasil-detail').textContent = 'Peringkat ' + me.rank + ' dari ' + me.players + (me.streak > 1 ? ' · beruntun ' + me.streak : '');
+            $('hasil-bintang').innerHTML = me.fastest ? '&#9733; Anda penjawab benar tercepat! (' + me.stars + ' bintang)' : (me.stars > 0 ? '&#9733; ' + me.stars + ' bintang' : '');
+            $('hasil-pemimpin').textContent = s.reveal.leader ? 'Pemimpin sementara: ' + s.reveal.leader.nickname + ' (' + s.reveal.leader.score + ' poin)' : '';
         } catch (e) {
             if (e.status === 403) show('kicked');
         }
@@ -150,12 +155,13 @@
             const me = await L.getJson(URLS.me);
             $('skor').textContent = me.score;
             $('akhir-peringkat').textContent = 'Peringkat ' + me.rank + ' dari ' + me.players;
-            $('akhir-detail').textContent = me.score + ' poin · ' + me.correct + ' jawaban benar dari ' + s.total + ' soal';
+            $('akhir-detail').textContent = me.score + ' poin · ' + me.correct + ' jawaban benar dari ' + s.total + ' soal' + (me.stars ? ' · ' + me.stars + ' bintang' : '');
+            const mine = (s.awards || []).filter(a => me.awards.includes(a.title));
+            $('akhir-penghargaan').innerHTML = mine.length ? L.awardCards(mine) : '';
         } catch (e) {
             if (e.status === 403) return show('kicked');
         }
-        $('akhir-tabel').innerHTML = (s.top || []).map(p =>
-            '<tr><td>' + p.rank + '</td><td>' + L.esc(p.nickname) + '</td><td class="angka">' + p.score + '</td></tr>').join('');
+        $('akhir-tabel').innerHTML = L.boardRows(s.top || []);
     }
 
     async function poll() {

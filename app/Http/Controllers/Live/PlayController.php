@@ -115,11 +115,19 @@ class PlayController extends Controller
         $questionId = $request->integer('question_id') ?: null;
         $last = $questionId ? $player->answers()->where('question_id', $questionId)->first() : null;
 
+        $stars = $this->game->stars($session);
+        $fastestId = $questionId ? ($stars['byQuestion'][$questionId]['player_id'] ?? null) : null;
+
         return response()->json([
             'nickname' => $player->nickname,
             'score' => $player->score,
             'streak' => $player->streak,
             'correct' => $player->correct_count,
+            'stars' => $stars['byPlayer'][$player->id] ?? 0,
+            'fastest' => $fastestId !== null && $fastestId === $player->id,
+            'awards' => $session->isFinished() || $player->finished_at
+                ? collect($this->game->awards($session))->where('player_id', $player->id)->pluck('title')->values()->all()
+                : [],
             'rank' => $this->game->rankOf($session, $player),
             'players' => $session->players()->count(),
             'last' => $questionId ? [
@@ -171,6 +179,38 @@ class PlayController extends Controller
             'me' => ['id' => $player->id, 'rank' => $this->game->rankOf($session, $player), 'score' => $player->score],
             'players' => $session->players()->count(),
         ])->header('Cache-Control', 'no-store');
+    }
+
+    /** Papan peringkat bersama: bisa dibuka siapa pun yang punya kode, tanpa bergabung. */
+    public function board(string $code): View
+    {
+        $session = $this->session($code);
+        abort_unless($session, 404);
+
+        return view('live.board', ['session' => $session->load('quiz:id,title')]);
+    }
+
+    public function boardData(string $code): JsonResponse
+    {
+        $session = $this->session($code);
+        abort_unless($session, 404);
+
+        // Banyak layar bisa membuka papan yang sama; hitung paling sering tiap 2 detik.
+        $data = \Illuminate\Support\Facades\Cache::remember('live-board-' . $session->id, 2, function () use ($session) {
+            $session->refresh();
+
+            return [
+                'status' => $session->status,
+                'mode' => $session->mode,
+                'index' => $session->current_index,
+                'total' => $session->questionCount(),
+                'players' => $session->players()->count(),
+                'leaderboard' => $this->game->leaderboard($session, 50),
+                'awards' => $session->isFinished() ? $this->game->awards($session) : [],
+            ];
+        });
+
+        return response()->json($data)->header('Cache-Control', 'no-store');
     }
 
     private function session(string $code): ?LiveSession

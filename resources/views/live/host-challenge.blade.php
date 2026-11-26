@@ -12,6 +12,7 @@
             <img src="{{ route('dosen.live.qr', $session) }}" alt="QR gabung" style="width:100%;max-width:320px">
             <div class="kode-besar">{{ $session->code }}</div>
             <p class="kecil">{{ $session->questionCount() }} soal · {{ $session->seconds_per_question }} detik per soal</p>
+            <p class="kecil">Papan peringkat bersama: {{ preg_replace('#^https?://#', '', route('live.board', $session->code)) }}</p>
             @if ($session->isFinished())
                 <p><strong>Tantangan sudah ditutup.</strong></p>
                 <a class="btn penuh" href="{{ route('dosen.live.results', $session) }}">Hasil lengkap</a>
@@ -23,6 +24,7 @@
             @endif
         </div>
         <div class="kartu">
+            <div class="penghargaan" id="awards"></div>
             <h2>Papan peringkat</h2>
             <p class="kecil"><span id="jml">0</span> peserta · <span id="selesai">0</span> selesai · diperbarui tiap 3 detik</p>
             <table class="papan">
@@ -45,9 +47,10 @@
             const d = await L.getJson(URL);
             $('jml').textContent = d.leaderboard.length;
             $('selesai').textContent = d.leaderboard.filter(p => p.finished).length;
-            $('papan').innerHTML = d.leaderboard.map(p => '<tr><td>' + p.rank + '</td><td>' + L.esc(p.nickname) + '</td><td class="angka">' +
+            $('papan').innerHTML = d.leaderboard.map(p => '<tr><td>' + p.rank + '</td><td>' + L.esc(p.nickname) + L.stars(p.stars) + '</td><td class="angka">' +
                 (p.finished ? 'selesai' : p.progress + '/' + d.total) + '</td><td class="angka">' + p.correct + '</td><td class="angka">' + p.score + '</td></tr>').join('')
                 || '<tr><td colspan="5" class="kecil">Belum ada peserta.</td></tr>';
+            $('awards').innerHTML = L.awardCards(d.awards);
         } catch (e) {}
         setTimeout(poll, 3000);
     }

@@ -33,6 +33,7 @@
         <h2 id="akhir-judul">Tantangan selesai</h2>
         <div class="status-besar" id="akhir-peringkat"></div>
         <p id="akhir-detail"></p>
+        <div class="penghargaan" id="akhir-penghargaan"></div>
         <table class="papan" id="akhir-tabel" style="margin-top:12px"></table>
         <button class="btn putih penuh" id="segarkan" style="margin-top:12px">Perbarui peringkat</button>
     </div>
@@ -133,10 +134,10 @@
             const me = await L.getJson(URLS.me);
             $('skor').textContent = me.score;
             $('akhir-peringkat').textContent = 'Peringkat ' + b.me.rank + ' dari ' + b.players;
-            $('akhir-detail').textContent = me.score + ' poin · ' + me.correct + ' benar dari ' + TOTAL + ' soal';
-            $('akhir-tabel').innerHTML = b.top.map(p =>
-                '<tr class="' + (p.id === b.me.id ? 'saya' : '') + '"><td>' + p.rank + '</td><td>' + L.esc(p.nickname) +
-                '</td><td class="angka">' + p.score + '</td></tr>').join('');
+            $('akhir-detail').textContent = me.score + ' poin · ' + me.correct + ' benar dari ' + TOTAL + ' soal' + (me.stars ? ' · ' + me.stars + ' bintang' : '');
+            $('akhir-penghargaan').innerHTML = me.awards.length
+                ? me.awards.map(t => '<div><div class="judul">Penghargaan</div><div class="nama">' + L.esc(t) + '</div></div>').join('') : '';
+            $('akhir-tabel').innerHTML = L.boardRows(b.top, b.me.id);
         } catch (e) { fail(e); }
     }
 

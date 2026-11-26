@@ -16,6 +16,7 @@
                 <p>Scan QR atau buka <strong>{{ preg_replace('#^https?://#', '', route('live.enter')) }}</strong></p>
                 <img src="{{ route('dosen.live.qr', $session) }}" alt="QR gabung" style="width:100%;max-width:340px">
                 <div class="kode-besar">{{ $session->code }}</div>
+                <p class="kecil">Papan peringkat bersama: {{ preg_replace('#^https?://#', '', route('live.board', $session->code)) }}</p>
             </div>
             <div class="kartu">
                 <h2><span id="jml-lobby">0</span> peserta</h2>
@@ -57,10 +58,18 @@
                     <div id="r-opsi"></div>
                 </div>
             </div>
-            <div class="kartu">
-                <h2>5 besar</h2>
-                <table class="papan" id="r-top"></table>
-                <button class="btn penuh" id="lanjut" style="margin-top:16px">Soal berikutnya</button>
+            <div>
+                <div class="kartu pemimpin" id="r-pemimpin"></div>
+                <div class="kartu">
+                    <h2>Jawaban benar: <span id="r-jml-benar">0</span> dari <span id="r-jml-peserta">0</span></h2>
+                    <p class="kecil">Urut dari yang tercepat. Bintang untuk penjawab benar tercepat.</p>
+                    <div class="chips" id="r-benar"></div>
+                </div>
+                <div class="kartu">
+                    <h2>5 besar</h2>
+                    <table class="papan" id="r-top"></table>
+                    <button class="btn penuh" id="lanjut" style="margin-top:16px">Soal berikutnya</button>
+                </div>
             </div>
         </div>
     </div>
@@ -70,6 +79,8 @@
         <div class="kartu tengah">
             <h1>Hasil akhir</h1>
             <div class="podium" id="podium"></div>
+            <h2 style="margin-top:8px">Penghargaan</h2>
+            <div class="penghargaan" id="f-awards"></div>
             <table class="papan" id="f-top"></table>
             <div style="margin-top:16px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
                 <a class="btn" href="{{ route('dosen.live.results', $session) }}">Hasil lengkap</a>
@@ -146,7 +157,17 @@
                 '</span><span style="flex:1">' + L.esc(o.text) + '</span><span>' + n + '</span></div>' +
                 '<div class="batang"><div class="o' + i + '" style="width:' + (100 * n / max) + '%"></div></div></div>';
         }).join('');
-        $('r-top').innerHTML = r.top.map(p => '<tr><td>' + p.rank + '</td><td>' + L.esc(p.nickname) + '</td><td class="angka">' + p.score + '</td></tr>').join('');
+        $('r-top').innerHTML = L.boardRows(r.top);
+        $('r-jml-benar').textContent = r.correct_count;
+        $('r-jml-peserta').textContent = s.players;
+        $('r-benar').innerHTML = r.correct_players.length
+            ? r.correct_players.map((p, i) => '<span class="chip' + (i === 0 ? ' cepat' : '') + '">' + (i === 0 ? '<span class="bintang">&#9733;</span> ' : '') +
+                L.esc(p.nickname) + ' <span class="kecil">' + String(p.seconds).replace('.', ',') + ' dtk</span></span>').join('')
+            : '<span class="kecil">Belum ada yang menjawab benar.</span>';
+        $('r-pemimpin').innerHTML = r.leader
+            ? '<p class="kecil" style="margin:0">Pemimpin sementara</p><div class="nama">' + L.esc(r.leader.nickname) + L.stars(r.leader.stars) +
+              '</div><p class="kecil" style="margin:0">' + r.leader.score + ' poin · ' + r.leader.correct + ' benar</p>'
+            : '<p class="kecil" style="margin:0">Belum ada peserta.</p>';
         $('lanjut').textContent = s.index + 1 >= s.total ? 'Lihat hasil akhir' : 'Soal berikutnya';
     }
 
@@ -155,10 +176,12 @@
         const t = s.top || [];
         const slot = (p, cls, label) => p
             ? '<div class="' + cls + '"><span class="kecil" style="display:block">' + label + '</span><span style="display:block;font-size:22px;margin:6px 0">' +
-              L.esc(p.nickname) + '</span><span class="kecil" style="display:block">' + p.score + ' poin</span></div>'
+              L.esc(p.nickname) + L.stars(p.stars) + '</span><span class="kecil" style="display:block">' + p.score + ' poin</span></div>'
             : '<div class="' + cls + '"></div>';
         $('podium').innerHTML = slot(t[1], 'p2', 'Juara 2') + slot(t[0], 'p1', 'Juara 1') + slot(t[2], 'p3', 'Juara 3');
-        $('f-top').innerHTML = t.slice(3).map(p => '<tr><td>' + p.rank + '</td><td>' + L.esc(p.nickname) + '</td><td class="angka">' + p.score + '</td></tr>').join('');
+        $('f-top').innerHTML = L.boardRows(t.slice(3));
+        // Juara 1-3 sudah di podium; di sini cukup penghargaan khusus.
+        $('f-awards').innerHTML = L.awardCards((s.awards || []).filter(a => !a.key.startsWith('juara'))) || '<p class="kecil">Belum ada penghargaan khusus.</p>';
         $('akhiri').classList.add('hidden');
     }
 
