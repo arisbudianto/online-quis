@@ -16,6 +16,8 @@ use App\Http\Controllers\Dosen\EssayGradingController;
 use App\Http\Controllers\Dosen\SemesterRecapController;
 use App\Http\Controllers\Dosen\CourseEnrollmentController;
 use App\Http\Controllers\Dosen\TeacherClassController;
+use App\Http\Controllers\Dosen\LiveSessionController;
+use App\Http\Controllers\Live\PlayController as LivePlayController;
 use App\Http\Controllers\Mahasiswa\HistoryController;
 use App\Http\Controllers\Mahasiswa\QuizController as MahasiswaQuizController;
 use App\Http\Controllers\Mahasiswa\QuizJoinController;
@@ -40,6 +42,23 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
         return view('welcome');
     })->name('welcome');
+
+// ================= KUIS INTERAKTIF: PESERTA =================
+// Tanpa login: peserta scan QR, isi nama panggilan, lalu main. Tidak ada
+// throttle per IP karena satu kelas biasanya keluar lewat satu IP kampus.
+Route::prefix('main')->name('live.')->group(function () {
+    Route::get('/', [LivePlayController::class, 'enter'])->name('enter');
+    Route::post('/', [LivePlayController::class, 'enterSubmit'])->name('enter.submit');
+    Route::get('jam', [LivePlayController::class, 'clock'])->name('clock');
+    Route::get('{code}', [LivePlayController::class, 'join'])->name('join');
+    Route::post('{code}', [LivePlayController::class, 'joinSubmit'])->name('join.submit');
+    Route::get('{code}/main', [LivePlayController::class, 'play'])->name('play');
+    Route::post('{code}/jawab', [LivePlayController::class, 'answer'])->name('answer');
+    Route::get('{code}/saya', [LivePlayController::class, 'me'])->name('me');
+    Route::get('{code}/soal', [LivePlayController::class, 'challengeQuestion'])->name('challenge.question');
+    Route::post('{code}/tantangan/jawab', [LivePlayController::class, 'challengeAnswer'])->name('challenge.answer');
+    Route::get('{code}/peringkat', [LivePlayController::class, 'leaderboard'])->name('leaderboard');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
 
@@ -75,6 +94,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::middleware('role:dosen,admin')->prefix('dosen')->name('dosen.')->group(function () {
         Route::resource('quizzes', DosenQuizController::class)->except(['show']);
         Route::resource('courses', CourseController::class)->only(['index', 'store', 'destroy']);
+        // Kuis interaktif (live dan tantangan)
+        Route::get('interaktif', [LiveSessionController::class, 'index'])->name('live.index');
+        Route::get('interaktif/buat', [LiveSessionController::class, 'create'])->name('live.create');
+        Route::post('interaktif', [LiveSessionController::class, 'store'])->name('live.store');
+        Route::get('interaktif/{session}', [LiveSessionController::class, 'show'])->name('live.show');
+        Route::get('interaktif/{session}/qr', [LiveSessionController::class, 'qr'])->name('live.qr');
+        Route::get('interaktif/{session}/status', [LiveSessionController::class, 'status'])->name('live.status');
+        Route::post('interaktif/{session}/mulai', [LiveSessionController::class, 'start'])->name('live.start');
+        Route::post('interaktif/{session}/tutup', [LiveSessionController::class, 'reveal'])->name('live.reveal');
+        Route::post('interaktif/{session}/lanjut', [LiveSessionController::class, 'next'])->name('live.next');
+        Route::post('interaktif/{session}/akhiri', [LiveSessionController::class, 'finish'])->name('live.finish');
+        Route::post('interaktif/{session}/keluarkan/{player}', [LiveSessionController::class, 'kick'])->name('live.kick');
+        Route::get('interaktif/{session}/hasil', [LiveSessionController::class, 'results'])->name('live.results');
+        Route::get('interaktif/{session}/export', [LiveSessionController::class, 'export'])->name('live.export');
         // Daftar kelas milik dosen
         Route::get('kelas', [TeacherClassController::class, 'index'])->name('classes.index');
         Route::post('kelas', [TeacherClassController::class, 'store'])->name('classes.store');

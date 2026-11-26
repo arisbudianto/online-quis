@@ -1,0 +1,5 @@
+# File status kuis live: jangan di-cache browser/proxy.
+<IfModule mod_headers.c>
+    Header set Cache-Control "no-store, max-age=0"
+</IfModule>
+Options -Indexes

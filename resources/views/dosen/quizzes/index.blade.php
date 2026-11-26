@@ -8,6 +8,7 @@
         <a href="{{ route('dosen.recap.index') }}" class="btn btn-outline-success">📈 Rekap Nilai</a>
         <a href="{{ route('dosen.courses.index') }}" class="btn btn-outline-secondary">📚 Mata Kuliah</a>
         <a href="{{ route('dosen.students.index') }}" class="btn btn-outline-secondary">🎓 Mahasiswa</a>
+        <a href="{{ route('dosen.live.index') }}" class="btn btn-outline-secondary">Kuis Interaktif</a>
         @if (auth()->user()->role === 'dosen')
             <a href="{{ route('dosen.classes.index') }}" class="btn btn-outline-secondary">Kelas Saya</a>
         @endif
@@ -85,10 +86,12 @@
                 <td>
                     <strong>{{ $quiz->submitted_count }}</strong> mahasiswa
                 </td>
-                <td class="d-flex gap-2">
+                <td class="d-flex gap-2 flex-wrap">
                     <a href="{{ route('dosen.quizzes.edit', $quiz) }}" class="btn btn-sm btn-outline-primary">Kelola</a>
                     <a href="{{ route('dosen.quizzes.scores', $quiz) }}" class="btn btn-sm btn-outline-success">Nilai</a>
                     <a href="{{ route('dosen.quizzes.analytics', $quiz) }}" class="btn btn-sm btn-outline-info">📊 Analitik</a>
+                    <a href="{{ route('dosen.live.create', ['quiz' => $quiz->id, 'mode' => 'live']) }}" class="btn btn-sm btn-outline-dark" title="Latihan live di proyektor">Live</a>
+                    <a href="{{ route('dosen.live.create', ['quiz' => $quiz->id, 'mode' => 'challenge']) }}" class="btn btn-sm btn-outline-dark" title="Latihan mandiri dengan papan peringkat">Tantangan</a>
                     <form method="POST" action="{{ route('dosen.quizzes.destroy', $quiz) }}" onsubmit="return confirm('Hapus kuis ini?')">
                         @csrf @method('DELETE')
                         <button class="btn btn-sm btn-outline-danger">Hapus</button>

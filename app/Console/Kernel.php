@@ -27,6 +27,9 @@ class Kernel extends ConsoleKernel
         $schedule->command('attempts:finalize-expired')
             ->everyFiveMinutes()
             ->withoutOverlapping();
+
+        // File status kuis live tidak dibutuhkan lagi setelah sesi lewat.
+        $schedule->command('live:cleanup --hours=48')->dailyAt('03:30');
     }
 
     protected function commands(): void
