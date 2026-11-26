@@ -473,4 +473,12 @@ class LiveGameTest extends TestCase
             ->assertSee(route('live.board', $live->code));
         $this->actingAs($this->dosen)->get(route('dosen.live.results', $live))->assertSee('Papan bersama');
     }
+
+    public function test_board_page_has_public_join_qr(): void
+    {
+        $s = $this->newSession();
+        $this->get(route('live.board', $s->code))->assertOk()->assertSee(route('live.qr', $s->code))->assertSee($s->code);
+        $this->get(route('live.qr', $s->code))->assertOk()->assertHeader('Content-Type', 'image/svg+xml');
+        $this->get(route('live.qr', 'ZZZZZZ'))->assertNotFound();
+    }
 }

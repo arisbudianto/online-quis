@@ -187,7 +187,19 @@ class PlayController extends Controller
         $session = $this->session($code);
         abort_unless($session, 404);
 
-        return view('live.board', ['session' => $session->load('quiz:id,title')]);
+        return view('live.board', ['session' => $session->load('quiz:id,title', 'host:id,name')]);
+    }
+
+    /** QR halaman gabung untuk ditampilkan di papan bersama (kode sesi memang publik). */
+    public function joinQr(string $code)
+    {
+        $session = $this->session($code);
+        abort_unless($session, 404);
+
+        $svg = \SimpleSoftwareIO\QrCode\Facades\QrCode::format('svg')->size(240)->margin(1)
+            ->generate(route('live.join', $session->code));
+
+        return response($svg)->header('Content-Type', 'image/svg+xml')->header('Cache-Control', 'public, max-age=3600');
     }
 
     public function boardData(string $code): JsonResponse
