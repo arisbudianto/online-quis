@@ -34,6 +34,16 @@
                                 @endforeach
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">{{ $mode === 'live' ? 'Setelah waktu habis' : 'Setelah peserta menjawab' }}</label>
+                            <select name="reveal_seconds" class="form-select">
+                                @foreach (\App\Models\LiveSession::REVEAL_OPTIONS as $sec)
+                                    <option value="{{ $sec }}" @selected($sec === ($mode === 'live' ? 5 : 3))>
+                                        {{ $sec === 0 ? 'Manual: tunggu tombol Soal berikutnya' : 'Tampilkan pembahasan ' . $sec . ' detik, lalu lanjut otomatis' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         @if ($mode === 'live')
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" name="shuffle" value="1" id="shuffle">

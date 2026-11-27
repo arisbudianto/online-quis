@@ -52,6 +52,12 @@
 
     {{-- PEMBAHASAN --}}
     <div id="v-reveal" class="hidden">
+        <div class="kartu" id="r-auto" style="display:none;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 20px">
+            <div class="status-besar" style="margin:0;font-size:22px" id="r-hitung"></div>
+            <div style="display:flex;gap:8px">
+                <button class="btn putih" id="tahan" style="padding:8px 14px;font-size:14px">Tahan</button>
+            </div>
+        </div>
         <div class="baris">
             <div>
                 <div class="kartu">
@@ -112,6 +118,7 @@
         kick: @json(url('dosen/interaktif/' . $session->id . '/keluarkan')),
     };
     let state = null, version = -1, timer = null, playerCount = 0, closing = false;
+    let autoTimer = null, autoIndex = null, autoLeft = 0, paused = false, advancing = false;
     const $ = id => document.getElementById(id);
     function show(v) { ['lobby', 'question', 'reveal', 'finished'].forEach(x => $('v-' + x).classList.toggle('hidden', x !== v)); }
 
@@ -170,7 +177,39 @@
             ? '<p class="kecil" style="margin:0">Pemimpin sementara</p><div class="nama">' + L.esc(r.leader.nickname) + L.stars(r.leader.stars) +
               '</div><p class="kecil" style="margin:0">' + r.leader.score + ' poin · ' + r.leader.correct + ' benar</p>'
             : '<p class="kecil" style="margin:0">Belum ada peserta.</p>';
-        $('lanjut').textContent = s.index + 1 >= s.total ? 'Lihat hasil akhir' : 'Soal berikutnya';
+        const akhir = s.index + 1 >= s.total;
+        $('lanjut').textContent = akhir ? 'Lihat hasil akhir' : 'Soal berikutnya';
+        startAuto(s, akhir);
+    }
+
+    // Lanjut otomatis setelah pembahasan tampil beberapa detik.
+    function startAuto(s, akhir) {
+        if (autoIndex === s.index) return; // versi berubah karena peserta baru: jangan ulang hitungan
+        autoIndex = s.index;
+        clearInterval(autoTimer);
+        paused = false;
+        advancing = false;
+        $('tahan').textContent = 'Tahan';
+        if (!s.reveal_seconds) { $('r-auto').style.display = 'none'; return; }
+        $('r-auto').style.display = 'flex';
+        $('lanjut').textContent = akhir ? 'Lihat hasil akhir sekarang' : 'Lanjut sekarang';
+        autoLeft = s.reveal_seconds;
+        const label = () => (akhir ? 'Hasil akhir dalam ' : 'Soal berikutnya dalam ') + autoLeft + ' detik';
+        $('r-hitung').textContent = label();
+        autoTimer = setInterval(() => {
+            if (paused) return;
+            autoLeft--;
+            if (autoLeft <= 0) { clearInterval(autoTimer); advance(s.index); return; }
+            $('r-hitung').textContent = label();
+        }, 1000);
+    }
+
+    function advance(index) {
+        if (advancing) return;
+        advancing = true;
+        clearInterval(autoTimer);
+        $('r-auto').style.display = 'none';
+        act(URLS.next, { index: index });
     }
 
     function renderFinished(s) {
@@ -226,7 +265,12 @@
     });
     $('mulai').onclick = () => act(URLS.start);
     $('tutup').onclick = () => closeQuestion(state.index);
-    $('lanjut').onclick = () => act(URLS.next);
+    $('lanjut').onclick = () => advance(state.index);
+    $('tahan').onclick = () => {
+        paused = !paused;
+        $('tahan').textContent = paused ? 'Lanjutkan hitungan' : 'Tahan';
+        if (paused) $('r-hitung').textContent = 'Ditahan. Tekan Lanjut sekarang bila sudah siap.';
+    };
     $('akhiri').onclick = () => { if (confirm('Akhiri sesi sekarang? Peserta langsung melihat hasil akhir.')) act(URLS.finish); };
 
     L.syncClock(URLS.clock).then(() => { pollState(false); pollStatus(); });

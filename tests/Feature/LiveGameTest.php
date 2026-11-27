@@ -481,4 +481,33 @@ class LiveGameTest extends TestCase
         $this->get(route('live.qr', $s->code))->assertOk()->assertHeader('Content-Type', 'image/svg+xml');
         $this->get(route('live.qr', 'ZZZZZZ'))->assertNotFound();
     }
+
+    public function test_auto_advance_setting_and_stale_next_is_ignored(): void
+    {
+        $this->actingAs($this->dosen)->get(route('dosen.live.create', ['quiz' => $this->quiz->id, 'mode' => 'live']))
+            ->assertOk()->assertSee('lalu lanjut otomatis')->assertSee('Manual: tunggu tombol');
+
+        $this->actingAs($this->dosen)->post(route('dosen.live.store'), [
+            'quiz_id' => $this->quiz->id, 'mode' => 'live', 'seconds_per_question' => 20, 'reveal_seconds' => 8,
+        ]);
+        $s = LiveSession::latest('id')->first();
+        $this->assertSame(8, $s->reveal_seconds);
+        $this->assertSame(8, $this->state($s)['reveal_seconds']);
+
+        $this->actingAs($this->dosen)->post(route('dosen.live.store'), [
+            'quiz_id' => $this->quiz->id, 'mode' => 'live', 'seconds_per_question' => 20, 'reveal_seconds' => 7,
+        ])->assertSessionHasErrors('reveal_seconds');
+
+        $this->joinAsGuest($s, 'Budi');
+        $this->actingAs($this->dosen)->postJson(route('dosen.live.start', $s));
+        $this->actingAs($this->dosen)->postJson(route('dosen.live.reveal', $s), ['index' => 0]);
+        // Hitung mundur dan tombol terpicu bersamaan: yang kedua diabaikan.
+        $this->actingAs($this->dosen)->postJson(route('dosen.live.next', $s), ['index' => 0])->assertJson(['index' => 1, 'status' => 'question']);
+        $this->actingAs($this->dosen)->postJson(route('dosen.live.next', $s), ['index' => 0])->assertJson(['index' => 1, 'status' => 'question']);
+
+        $manual = $this->newSession('challenge');
+        $this->assertSame(5, $manual->reveal_seconds, 'nilai bawaan bila tidak dikirim');
+        $p = $this->joinAsGuest($manual, 'Eka');
+        $this->asPlayer($p)->getJson(route('live.challenge.question', $manual->code))->assertJsonPath('reveal_seconds', 5);
+    }
 }

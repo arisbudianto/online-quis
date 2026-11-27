@@ -58,7 +58,7 @@ class LiveGameService
             ->values();
     }
 
-    public function createSession(Quiz $quiz, User $host, string $mode, int $seconds, bool $shuffleQuestions): LiveSession
+    public function createSession(Quiz $quiz, User $host, string $mode, int $seconds, bool $shuffleQuestions, int $revealSeconds = 5): LiveSession
     {
         $questions = $this->eligibleQuestions($quiz);
         if ($questions->isEmpty()) {
@@ -75,6 +75,7 @@ class LiveGameService
             'state_token' => LiveSession::newStateToken(),
             'status' => $mode === LiveSession::MODE_LIVE ? 'lobby' : 'open',
             'seconds_per_question' => $seconds,
+            'reveal_seconds' => $revealSeconds,
             'plan' => $this->buildPlan($questions, $shuffleQuestions),
             'started_at' => $mode === LiveSession::MODE_CHALLENGE ? now() : null,
         ]);
@@ -272,6 +273,7 @@ class LiveGameService
             'total' => count($plan),
             'question' => $this->questionPayload($step),
             'seconds' => $session->seconds_per_question,
+            'reveal_seconds' => (int) $session->reveal_seconds,
             'remaining_ms' => max(0, $limitMs - (self::nowMs() - (int) $player->served_ms)),
         ];
     }
@@ -550,6 +552,7 @@ class LiveGameService
             'index' => $session->current_index,
             'total' => $session->questionCount(),
             'seconds' => $session->seconds_per_question,
+            'reveal_seconds' => (int) $session->reveal_seconds,
             'players' => $session->players()->count(),
         ];
 

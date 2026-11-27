@@ -12,9 +12,12 @@ class LiveSession extends Model
 
     public const SECONDS_OPTIONS = [10, 20, 30, 45, 60, 90];
 
+    /** Jeda pembahasan sebelum lanjut otomatis; 0 = manual. */
+    public const REVEAL_OPTIONS = [3, 5, 8, 10, 0];
+
     protected $fillable = [
         'quiz_id', 'host_id', 'mode', 'code', 'state_token', 'status',
-        'seconds_per_question', 'plan', 'current_index', 'question_started_ms',
+        'seconds_per_question', 'reveal_seconds', 'plan', 'current_index', 'question_started_ms',
         'version', 'started_at', 'finished_at',
     ];
 

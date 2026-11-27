@@ -57,12 +57,13 @@
         me: @json(route('live.me', $session->code)),
     };
     const TOTAL = {{ $session->questionCount() }};
-    let cur = null, deadline = 0, timer = null, busy = false;
+    let cur = null, deadline = 0, timer = null, busy = false, autoNext = null;
     const $ = id => document.getElementById(id);
     function show(v) { ['start', 'question', 'finished', 'kicked'].forEach(x => $('v-' + x).classList.toggle('hidden', x !== v)); }
     function fail(e) { if (e.status === 403) return show('kicked'); $('galat').textContent = e.message; }
 
     async function load() {
+        clearInterval(autoNext);
         $('galat').textContent = '';
         try {
             const d = await L.getJson(URLS.question);
@@ -119,8 +120,20 @@
             else if (r.correct) { judul.textContent = 'Benar! +' + r.points; judul.className = 'status-besar hijau'; }
             else { judul.textContent = 'Belum tepat'; judul.className = 'status-besar merahteks'; }
             $('umpan-detail').textContent = r.streak > 1 ? 'Beruntun ' + r.streak + ' jawaban benar' : '';
-            $('lanjut').textContent = r.finished ? 'Lihat hasil' : 'Soal berikutnya';
+            const dasar = r.finished ? 'Lihat hasil' : 'Soal berikutnya';
+            $('lanjut').textContent = dasar;
             $('umpan').classList.remove('hidden');
+            // Lanjut otomatis setelah umpan balik tampil beberapa detik.
+            clearInterval(autoNext);
+            if (cur.reveal_seconds) {
+                let left = cur.reveal_seconds;
+                $('lanjut').textContent = dasar + ' (' + left + ')';
+                autoNext = setInterval(() => {
+                    left--;
+                    if (left <= 0) { clearInterval(autoNext); load(); }
+                    else $('lanjut').textContent = dasar + ' (' + left + ')';
+                }, 1000);
+            }
         } catch (e) { fail(e); }
         busy = false;
     }

@@ -53,6 +53,7 @@ class LiveSessionController extends Controller
             'mode' => ['required', Rule::in([LiveSession::MODE_LIVE, LiveSession::MODE_CHALLENGE])],
             'seconds_per_question' => ['required', 'integer', Rule::in(LiveSession::SECONDS_OPTIONS)],
             'shuffle' => ['nullable', 'boolean'],
+            'reveal_seconds' => ['nullable', 'integer', Rule::in(LiveSession::REVEAL_OPTIONS)],
         ]);
 
         $quiz = Quiz::findOrFail($data['quiz_id']);
@@ -63,7 +64,8 @@ class LiveSessionController extends Controller
             $request->user(),
             $data['mode'],
             (int) $data['seconds_per_question'],
-            (bool) ($data['shuffle'] ?? false)
+            (bool) ($data['shuffle'] ?? false),
+            (int) ($data['reveal_seconds'] ?? 5)
         );
 
         return redirect()->route('dosen.live.show', $session);
@@ -138,7 +140,11 @@ class LiveSessionController extends Controller
     public function next(Request $request, LiveSession $session): JsonResponse
     {
         $this->authorizeSession($request, $session);
-        abort_unless($session->status === 'reveal', 409);
+        // Hitung mundur otomatis dan tombol bisa terpicu bersamaan: abaikan
+        // permintaan untuk soal yang sudah dilewati.
+        if ($session->status !== 'reveal' || ($request->filled('index') && $request->integer('index') !== $session->current_index)) {
+            return $this->ok($session);
+        }
         $this->game->next($session);
 
         return $this->ok($session);

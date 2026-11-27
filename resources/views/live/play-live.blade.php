@@ -33,6 +33,7 @@
         <p id="hasil-bintang" class="bintang"></p>
         <p class="kecil" id="hasil-pemimpin"></p>
         <p class="kecil" id="hasil-kunci"></p>
+        <p class="kecil" id="hasil-lanjut"></p>
     </div>
 
     <div id="v-finished" class="kartu tengah hidden">
@@ -124,6 +125,15 @@
         if (revealFor === s.question.id) return;
         revealFor = s.question.id;
         show('reveal');
+        clearInterval(window.__lanjut);
+        $('hasil-lanjut').textContent = '';
+        if (s.reveal_seconds) {
+            let left = s.reveal_seconds;
+            const akhir = s.index + 1 >= s.total;
+            const tulis = () => $('hasil-lanjut').textContent = (akhir ? 'Hasil akhir' : 'Soal berikutnya') + ' dalam ' + left + ' detik';
+            tulis();
+            window.__lanjut = setInterval(() => { left--; if (left <= 0) { clearInterval(window.__lanjut); $('hasil-lanjut').textContent = ''; } else tulis(); }, 1000);
+        }
         const kunci = s.question.options.findIndex(o => o.id === s.reveal.correct_option_id);
         $('hasil-kunci').textContent = 'Jawaban benar: ' + L.letter(kunci) + '. ' + (s.question.options[kunci] ? s.question.options[kunci].text : '');
         $('hasil-judul').textContent = '...';
